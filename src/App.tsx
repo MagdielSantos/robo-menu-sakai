@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Sidebar from "./components/Layout/Sidebar";
 import Index from "./pages/Index";
 import RPAPage from "./pages/RPAPage";
+import RPADetailPage from "./pages/RPADetailPage";
 import ExecutionsPage from "./pages/ExecutionsPage";
 import MonitoringPage from "./pages/MonitoringPage";
 import AdminPage from "./pages/AdminPage";
@@ -26,6 +27,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/rpas" element={<RPAPage />} />
+              <Route path="/rpas/:id" element={<RPADetailPage />} />
               <Route path="/execucoes" element={<ExecutionsPage />} />
               <Route path="/monitoramento" element={<MonitoringPage />} />
               <Route path="/admin" element={<AdminPage />} />
