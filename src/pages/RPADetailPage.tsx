@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
@@ -35,154 +34,18 @@ import {
   DialogHeader,
   DialogTitle
 } from "@/components/ui/dialog";
+import { rpaService, RPAFiltro, RPAExecution, StatusCount, ProjectInfo, RPATask } from '@/services/RPAService';
 
 // Extended RPA interface to include additional properties we need
 interface ExtendedRPA extends RPA {
-  projectInfo?: {
-    name: string;
-    active: boolean;
-    description: string;
-    automaticProcessingSchedule: string;
-    automaticIngestionSchedule: string;
-  };
-  statusCount?: {
-    ignored: number;
-    pending: number;
-    started: number;
-    completed: number;
-    error: number;
-    total: number;
-  };
-  tasks?: Record<string, {
-    is_running: boolean;
-    erro_login: boolean;
-    start_time: string;
-    end_time: string;
-  }>;
-  executions?: Array<{
-    id: string;
-    status: string;
-    processNumber: string;
-    documentName: string;
-    documentType: string;
-    documentPath: string;
-    maxFolder: string;
-    executionTime: string | null;
-    registrationDate: string;
-    startDate: string | null;
-    endDate: string | null;
-  }>;
+  projectInfo?: ProjectInfo;
+  statusCount?: StatusCount;
+  tasks?: Record<string, RPATask>;
+  executions?: RPAExecution[];
 }
 
-// Mock data for RPA details
-const mockRPADetails: ExtendedRPA = {
-  id: "1",
-  name: "Processamento de Faturas",
-  description: "Automatização do processo de captura e classificação de faturas recebidas por email.",
-  status: "active",
-  category: "Financeiro",
-  lastExecution: "Hoje, 14:30",
-  favorite: true,
-  projectInfo: {
-    name: "Processamento de Faturas",
-    active: true,
-    description: "Automatização do processo de captura e classificação de faturas recebidas por email.",
-    automaticProcessingSchedule: "Diariamente às 08:00",
-    automaticIngestionSchedule: "A cada 30 minutos"
-  },
-  statusCount: {
-    ignored: 2,
-    pending: 5,
-    started: 1,
-    completed: 42,
-    error: 3,
-    total: 53
-  },
-  tasks: {
-    "max_processar_sharepoint_1": {
-      is_running: true,
-      erro_login: false,
-      start_time: "2023-07-15T08:00:00",
-      end_time: "2023-07-15T08:30:00"
-    },
-    "max_processar_sharepoint_2": {
-      is_running: false,
-      erro_login: true,
-      start_time: "2023-07-15T07:00:00",
-      end_time: "2023-07-15T07:15:00"
-    }
-  },
-  executions: [
-    {
-      id: "1",
-      status: "CONCLUÍDO",
-      processNumber: "2023/1234-5",
-      documentName: "fatura_mensal_julho",
-      documentType: "Fatura",
-      documentPath: "/sharpoint/financeiro/faturas/2023/",
-      maxFolder: "F-2023-1234",
-      executionTime: "00:03:45",
-      registrationDate: "2023-07-15T08:00:00",
-      startDate: "2023-07-15T08:01:00",
-      endDate: "2023-07-15T08:04:45"
-    },
-    {
-      id: "2",
-      status: "ERRO",
-      processNumber: "2023/1235-6",
-      documentName: "fatura_servico_terceiros",
-      documentType: "Fatura",
-      documentPath: "/sharpoint/financeiro/faturas/2023/",
-      maxFolder: "F-2023-1235",
-      executionTime: "00:01:23",
-      registrationDate: "2023-07-15T09:00:00",
-      startDate: "2023-07-15T09:01:00",
-      endDate: "2023-07-15T09:02:23"
-    },
-    {
-      id: "3",
-      status: "PENDENTE",
-      processNumber: "2023/1236-7",
-      documentName: "fatura_agosto_previsao",
-      documentType: "Fatura",
-      documentPath: "/sharpoint/financeiro/faturas/2023/",
-      maxFolder: "F-2023-1236",
-      executionTime: null,
-      registrationDate: "2023-07-15T10:00:00",
-      startDate: null,
-      endDate: null
-    },
-    {
-      id: "4",
-      status: "INICIADO",
-      processNumber: "2023/1237-8",
-      documentName: "fatura_consultoria",
-      documentType: "Fatura",
-      documentPath: "/sharpoint/financeiro/faturas/2023/",
-      maxFolder: "F-2023-1237",
-      executionTime: null,
-      registrationDate: "2023-07-15T11:00:00",
-      startDate: "2023-07-15T11:01:00",
-      endDate: null
-    },
-    {
-      id: "5",
-      status: "IGNORADO",
-      processNumber: "2023/1238-9",
-      documentName: "fatura_duplicada",
-      documentType: "Fatura",
-      documentPath: "/sharpoint/financeiro/faturas/2023/",
-      maxFolder: "F-2023-1238",
-      executionTime: "00:00:30",
-      registrationDate: "2023-07-15T12:00:00",
-      startDate: "2023-07-15T12:01:00",
-      endDate: "2023-07-15T12:01:30"
-    }
-  ]
-};
-
 // Helper function to format dates
-const formatDate = (dateString) => {
+const formatDate = (dateString: string | null) => {
   if (!dateString) return "---";
   const date = new Date(dateString);
   return date.toLocaleDateString('pt-BR') + " " + date.toLocaleTimeString('pt-BR', {
@@ -192,7 +55,7 @@ const formatDate = (dateString) => {
 };
 
 const RPADetailPage = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const [rpa, setRpa] = useState<ExtendedRPA | null>(null);
   const [loading, setLoading] = useState(true);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
@@ -200,14 +63,121 @@ const RPADetailPage = () => {
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [filtro] = useState(new RPAFiltro());
 
-  useEffect(() => {
-    // Simulating API call
-    setTimeout(() => {
-      setRpa(mockRPADetails);
+  // Fetch RPA data
+  const fetchRPAData = async () => {
+    setLoading(true);
+    try {
+      // In a real application, we would fetch the RPA by id
+      // For now we'll use the mock data structure but in the future we'd do:
+      // const rpaData = await fetchRPAById(id);
+      
+      if (!id) {
+        toast.error("ID do RPA não fornecido");
+        setLoading(false);
+        return;
+      }
+      
+      // Create a base RPA object
+      const baseRPA: ExtendedRPA = {
+        id: id,
+        name: "Carregando...",
+        description: "Carregando...",
+        status: "active",
+        category: "Carregando...",
+        lastExecution: "Carregando...",
+        favorite: false,
+      };
+      
+      setRpa(baseRPA);
+      
+      // Fetch status counts
+      const statusCount = await rpaService.getStatusCount();
+      
+      // Fetch project info (in a real app we'd have the project ID from the RPA)
+      const projectId = '6716b7026b50052d250027df'; // This would come from the RPA data
+      const projectInfo = await rpaService.getProjectInfo(projectId);
+      
+      // Fetch executions
+      const { datas: executions } = await rpaService.pesquisar(filtro);
+      
+      // Update the RPA with all fetched data
+      setRpa({
+        ...baseRPA,
+        name: projectInfo.nome_projeto,
+        description: projectInfo.descricao_simples,
+        // Map the API data structure to our ExtendedRPA structure
+        projectInfo: {
+          name: projectInfo.nome_projeto,
+          active: projectInfo.ativo,
+          description: projectInfo.descricao_simples,
+          automaticProcessingSchedule: projectInfo.descricao_acionamento,
+          automaticIngestionSchedule: projectInfo.descricao_ingestao
+        },
+        statusCount: {
+          ignored: statusCount.ignorado,
+          pending: statusCount.pendente,
+          started: statusCount.iniciado,
+          completed: statusCount.sucesso,
+          error: statusCount.erro,
+          total: statusCount.total
+        },
+        executions: executions.map(exec => ({
+          id: exec.id,
+          status: exec.status_proc,
+          processNumber: exec.numero_de_processo,
+          documentName: exec.nome_do_documento,
+          documentType: exec.tipo_do_documento,
+          documentPath: exec.caminho_do_documento,
+          maxFolder: exec.pasta_max,
+          executionTime: exec.tempo_de_execucao,
+          registrationDate: exec.data_cadastrado,
+          startDate: exec.data_inicio_exec,
+          endDate: exec.data_fim_exec
+        }))
+      });
+    } catch (error) {
+      console.error("Error fetching RPA data:", error);
+      toast.error("Erro ao carregar dados do RPA");
+    } finally {
       setLoading(false);
-    }, 500);
-  }, [id]);
+    }
+  };
+  
+  useEffect(() => {
+    fetchRPAData();
+    
+    // Set up interval for refreshing status counts
+    const interval = setInterval(() => {
+      rpaService.getStatusCount()
+        .then(statusCount => {
+          setRpa(prev => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              statusCount: {
+                ignored: statusCount.ignorado,
+                pending: statusCount.pendente,
+                started: statusCount.iniciado,
+                completed: statusCount.sucesso,
+                error: statusCount.erro,
+                total: statusCount.total
+              }
+            };
+          });
+        })
+        .catch(error => console.error("Error refreshing status counts:", error));
+        
+      // If tasks dialog is open, refresh tasks
+      if (tasksDialogOpen) {
+        fetchTasks();
+      }
+    }, 5000); // Refresh every 5 seconds
+    
+    // Clean up interval on unmount
+    return () => clearInterval(interval);
+  }, [id, tasksDialogOpen]);
 
   const handleExecute = () => {
     toast.success(`Iniciando execução: ${rpa?.name}`);
@@ -220,7 +190,7 @@ const RPADetailPage = () => {
     );
   };
 
-  const goToMaxFolder = (folderId) => {
+  const goToMaxFolder = (folderId: string) => {
     if (!folderId) return;
     window.open(
       `https://max.sistemajur.com.br/Processo/FiltrarProcesso/DetalhesProcesso/?idProc=${folderId}&pasta=${folderId}`,
@@ -242,21 +212,55 @@ const RPADetailPage = () => {
       .catch(() => toast.error('Erro ao copiar texto.'));
   };
 
-  const exportToExcel = () => {
+  const fetchTasks = async () => {
+    try {
+      const tasks = await rpaService.getTasks();
+      setRpa(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          tasks
+        };
+      });
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+    }
+  };
+
+  const handleOpenTasksDialog = async () => {
+    await fetchTasks();
+    setTasksDialogOpen(true);
+  };
+
+  const exportToExcel = async () => {
     setConfirmExportDialogOpen(false);
     toast.success('Exportando dados para Excel...');
-    // Implementation would go here
+    try {
+      await rpaService.exportToExcel(filtro);
+    } catch (error) {
+      console.error("Error exporting to Excel:", error);
+    }
   };
 
-  const startTask = () => {
-    toast.success('Tarefa inicializada com sucesso.');
+  const startTask = async () => {
+    try {
+      await rpaService.processar();
+      await fetchTasks();
+    } catch (error) {
+      console.error("Error starting task:", error);
+    }
   };
 
-  const stopTask = (taskKey) => {
-    toast.success(`Solicitação de parada para ${taskKey} concluída`);
+  const stopTask = async (taskKey: string) => {
+    try {
+      await rpaService.stopTask(taskKey);
+      await fetchTasks();
+    } catch (error) {
+      console.error("Error stopping task:", error);
+    }
   };
 
-  const getStatusVariant = (status) => {
+  const getStatusVariant = (status: string) => {
     switch (status) {
       case 'CONCLUÍDO': return "bg-green-200 text-green-700 border-green-300";
       case 'ERRO': return "bg-red-200 text-red-700 border-red-300";
@@ -267,7 +271,7 @@ const RPADetailPage = () => {
     }
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case 'CONCLUÍDO': return <CheckCircle className="h-4 w-4" />;
       case 'ERRO': return <AlertTriangle className="h-4 w-4" />;
@@ -307,7 +311,7 @@ const RPADetailPage = () => {
             <AlertTriangle className="h-4 w-4 mr-2" />
             Registrar Incidente
           </Button>
-          <Button variant="secondary" onClick={() => setTasksDialogOpen(true)}>
+          <Button variant="secondary" onClick={handleOpenTasksDialog}>
             <Bot className="h-4 w-4 mr-2" />
             Monitorar Robô
           </Button>
