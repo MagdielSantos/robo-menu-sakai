@@ -8,9 +8,9 @@ import {
   CheckCircle, 
   Play, 
   XCircle, 
-  FileExcel, 
+  FileText, 
   RefreshCw, 
-  Robot, 
+  Bot, 
   Download 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -36,8 +36,46 @@ import {
   DialogTitle
 } from "@/components/ui/dialog";
 
+// Extended RPA interface to include additional properties we need
+interface ExtendedRPA extends RPA {
+  projectInfo?: {
+    name: string;
+    active: boolean;
+    description: string;
+    automaticProcessingSchedule: string;
+    automaticIngestionSchedule: string;
+  };
+  statusCount?: {
+    ignored: number;
+    pending: number;
+    started: number;
+    completed: number;
+    error: number;
+    total: number;
+  };
+  tasks?: Record<string, {
+    is_running: boolean;
+    erro_login: boolean;
+    start_time: string;
+    end_time: string;
+  }>;
+  executions?: Array<{
+    id: string;
+    status: string;
+    processNumber: string;
+    documentName: string;
+    documentType: string;
+    documentPath: string;
+    maxFolder: string;
+    executionTime: string | null;
+    registrationDate: string;
+    startDate: string | null;
+    endDate: string | null;
+  }>;
+}
+
 // Mock data for RPA details
-const mockRPADetails = {
+const mockRPADetails: ExtendedRPA = {
   id: "1",
   name: "Processamento de Faturas",
   description: "Automatização do processo de captura e classificação de faturas recebidas por email.",
@@ -155,7 +193,7 @@ const formatDate = (dateString) => {
 
 const RPADetailPage = () => {
   const { id } = useParams();
-  const [rpa, setRpa] = useState<RPA | null>(null);
+  const [rpa, setRpa] = useState<ExtendedRPA | null>(null);
   const [loading, setLoading] = useState(true);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
   const [confirmExportDialogOpen, setConfirmExportDialogOpen] = useState(false);
@@ -166,7 +204,7 @@ const RPADetailPage = () => {
   useEffect(() => {
     // Simulating API call
     setTimeout(() => {
-      setRpa(mockRPADetails as any);
+      setRpa(mockRPADetails);
       setLoading(false);
     }, 500);
   }, [id]);
@@ -240,8 +278,8 @@ const RPADetailPage = () => {
     }
   };
 
-  const filteredExecutions = filterStatus 
-    ? rpa?.executions.filter(exec => exec.status === filterStatus) 
+  const filteredExecutions = filterStatus && rpa?.executions
+    ? rpa.executions.filter(exec => exec.status === filterStatus) 
     : rpa?.executions;
 
   if (loading) {
@@ -270,11 +308,11 @@ const RPADetailPage = () => {
             Registrar Incidente
           </Button>
           <Button variant="secondary" onClick={() => setTasksDialogOpen(true)}>
-            <Robot className="h-4 w-4 mr-2" />
+            <Bot className="h-4 w-4 mr-2" />
             Monitorar Robô
           </Button>
           <Button variant="outline" onClick={() => setConfirmExportDialogOpen(true)}>
-            <FileExcel className="h-4 w-4 mr-2" />
+            <FileText className="h-4 w-4 mr-2" />
             Exportar Excel
           </Button>
         </div>
@@ -289,7 +327,7 @@ const RPADetailPage = () => {
                   {rpa.projectInfo.name}
                 </h3>
                 {rpa.projectInfo.active ? (
-                  <Badge variant="success" className="bg-green-100 text-green-800 hover:bg-green-200">
+                  <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-200">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Ativo
                   </Badge>
