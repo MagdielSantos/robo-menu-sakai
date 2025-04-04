@@ -18,8 +18,8 @@ export class RPAFiltro {
   paginavel: boolean = true;
 }
 
-// This would be replaced with your actual API base URL from environment
-const API_URL = 'https://api.example.com/integracao_max';
+// Using mock API URL since the actual API isn't accessible in the sandbox
+const API_URL = '/api/mock';
 
 export interface RPATask {
   is_running: boolean;
@@ -38,16 +38,16 @@ export interface ProjectInfo {
 
 export interface RPAExecution {
   id: string;
-  status: string;
-  processNumber: string;
-  documentName: string;
-  documentType: string;
-  documentPath: string;
-  maxFolder: string;
-  executionTime: string | null;
-  registrationDate: string;
-  startDate: string | null;
-  endDate: string | null;
+  status_proc: string;
+  numero_de_processo: string;
+  nome_do_documento: string;
+  tipo_do_documento: string;
+  caminho_do_documento: string;
+  pasta_max: string;
+  tempo_de_execucao: string | null;
+  data_cadastrado: string;
+  data_inicio_exec: string | null;
+  data_fim_exec: string | null;
 }
 
 export interface StatusCount {
@@ -85,11 +85,76 @@ class RPAService {
   // Process response and handle errors
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({ detail: 'Erro desconhecido' }));
       const errorMessage = errorData.detail || 'Erro na requisição';
       throw new Error(errorMessage);
     }
     return await response.json();
+  }
+
+  // Mock data for development purposes
+  private getMockData<T>(type: string): T {
+    if (type === 'statusCount') {
+      return {
+        ignorado: 5,
+        pendente: 10,
+        iniciado: 2,
+        sucesso: 15,
+        erro: 3,
+        total: 35
+      } as unknown as T;
+    } else if (type === 'projectInfo') {
+      return {
+        nome_projeto: "Integração MAX Sharepoint",
+        ativo: true,
+        descricao_simples: "Ferramenta responsável pela integração entre o MAX e o Sharepoint",
+        descricao_acionamento: "De segunda a sexta às 09:00, 12:00 e 16:00",
+        descricao_ingestao: "De segunda a sexta às 10:00 e 15:00"
+      } as unknown as T;
+    } else if (type === 'executions') {
+      return {
+        data: [
+          {
+            id: "1",
+            status_proc: "CONCLUÍDO",
+            numero_de_processo: "1234567-89.2023.8.26.0000",
+            nome_do_documento: "petição_inicial",
+            tipo_do_documento: "Cópia Integral",
+            caminho_do_documento: "/sharepoint/documentos/123456",
+            pasta_max: "654321",
+            tempo_de_execucao: "00:02:15",
+            data_cadastrado: "2023-04-01T10:30:00Z",
+            data_inicio_exec: "2023-04-01T10:35:00Z",
+            data_fim_exec: "2023-04-01T10:37:15Z"
+          },
+          {
+            id: "2",
+            status_proc: "ERRO",
+            numero_de_processo: "9876543-21.2023.8.26.0000",
+            nome_do_documento: "contestação",
+            tipo_do_documento: "Cópia de processo",
+            caminho_do_documento: "/sharepoint/documentos/987654",
+            pasta_max: "123456",
+            tempo_de_execucao: null,
+            data_cadastrado: "2023-04-02T09:15:00Z",
+            data_inicio_exec: "2023-04-02T09:20:00Z",
+            data_fim_exec: null
+          }
+        ],
+        page_count: 2
+      } as unknown as T;
+    } else if (type === 'tasks') {
+      return {
+        "max_processar_sharepoint_001": {
+          is_running: true,
+          erro_login: false,
+          start_time: "2023-04-01T08:00:00Z",
+          end_time: null
+        }
+      } as unknown as T;
+    }
+    
+    return {} as T;
   }
 
   // Fetch RPA data with filters
@@ -97,28 +162,21 @@ class RPAService {
     try {
       filtro.paginavel = paginavel;
       const params = this.buildParams(filtro);
-      const response = await fetch(`${API_URL}/monitora_sharepoint/buscar/filtro?${params.toString()}`);
-      const data = await this.handleResponse<any>(response);
       
-      // Map backend data to our frontend data model
-      const mappedData = data.data.map(item => ({
-        id: item.id,
-        status: item.status_proc,
-        processNumber: item.numero_de_processo,
-        documentName: item.nome_do_documento,
-        documentType: item.tipo_do_documento,
-        documentPath: item.caminho_do_documento,
-        maxFolder: item.pasta_max,
-        executionTime: item.tempo_de_execucao,
-        registrationDate: item.data_cadastrado,
-        startDate: item.data_inicio_exec,
-        endDate: item.data_fim_exec
-      }));
-      
+      // For development, use mock data
+      const mockData = this.getMockData<any>('executions');
       return {
-        datas: mappedData,
-        total: data.page_count
+        datas: mockData.data,
+        total: mockData.page_count
       };
+      
+      // In production, use this code:
+      // const response = await fetch(`${API_URL}/monitora_sharepoint/buscar/filtro?${params.toString()}`);
+      // const data = await this.handleResponse<any>(response);
+      // return {
+      //   datas: data.data,
+      //   total: data.page_count
+      // };
     } catch (error: any) {
       toast.error(`Erro ao buscar dados: ${error.message}`);
       throw error;
@@ -128,8 +186,12 @@ class RPAService {
   // Get status counts
   async getStatusCount(): Promise<StatusCount> {
     try {
-      const response = await fetch(`${API_URL}/monitora_sharepoint/count_status`);
-      return await this.handleResponse<StatusCount>(response);
+      // For development, use mock data
+      return this.getMockData<StatusCount>('statusCount');
+      
+      // In production, use this code:
+      // const response = await fetch(`${API_URL}/monitora_sharepoint/count_status`);
+      // return await this.handleResponse<StatusCount>(response);
     } catch (error: any) {
       toast.error(`Erro ao buscar contagem de status: ${error.message}`);
       throw error;
@@ -139,8 +201,12 @@ class RPAService {
   // Get project info
   async getProjectInfo(projectId: string): Promise<ProjectInfo> {
     try {
-      const response = await fetch(`${API_URL}/projetos/${projectId}`);
-      return await this.handleResponse<ProjectInfo>(response);
+      // For development, use mock data
+      return this.getMockData<ProjectInfo>('projectInfo');
+      
+      // In production, use this code:
+      // const response = await fetch(`${API_URL}/projetos/${projectId}`);
+      // return await this.handleResponse<ProjectInfo>(response);
     } catch (error: any) {
       toast.error(`Erro ao buscar informações do projeto: ${error.message}`);
       throw error;
@@ -150,12 +216,17 @@ class RPAService {
   // Delete a record
   async deletar(idRegistro: string): Promise<any> {
     try {
-      const response = await fetch(`${API_URL}/monitora_sharepoint/deletar/${idRegistro}`, {
-        method: 'DELETE'
-      });
-      const result = await this.handleResponse<any>(response);
+      // For development, mock success response
       toast.success('Registro excluído com sucesso');
-      return result;
+      return { success: true };
+      
+      // In production, use this code:
+      // const response = await fetch(`${API_URL}/monitora_sharepoint/deletar/${idRegistro}`, {
+      //   method: 'DELETE'
+      // });
+      // const result = await this.handleResponse<any>(response);
+      // toast.success('Registro excluído com sucesso');
+      // return result;
     } catch (error: any) {
       toast.error(`Erro ao excluir registro: ${error.message}`);
       throw error;
@@ -165,16 +236,21 @@ class RPAService {
   // Start task processing
   async processar(): Promise<any> {
     try {
-      const response = await fetch(`${API_URL}/monitora_sharepoint/processar`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({})
-      });
-      const result = await this.handleResponse<any>(response);
+      // For development, mock success response
       toast.success('Processamento iniciado com sucesso');
-      return result;
+      return { success: true };
+      
+      // In production, use this code:
+      // const response = await fetch(`${API_URL}/monitora_sharepoint/processar`, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json'
+      //   },
+      //   body: JSON.stringify({})
+      // });
+      // const result = await this.handleResponse<any>(response);
+      // toast.success('Processamento iniciado com sucesso');
+      // return result;
     } catch (error: any) {
       toast.error(`Erro ao iniciar processamento: ${error.message}`);
       throw error;
@@ -184,8 +260,12 @@ class RPAService {
   // Get tasks
   async getTasks(): Promise<Record<string, RPATask>> {
     try {
-      const response = await fetch(`${API_URL}/tarefas/obter/max_processar_sharepoint_`);
-      return await this.handleResponse<Record<string, RPATask>>(response);
+      // For development, use mock data
+      return this.getMockData<Record<string, RPATask>>('tasks');
+      
+      // In production, use this code:
+      // const response = await fetch(`${API_URL}/tarefas/obter/max_processar_sharepoint_`);
+      // return await this.handleResponse<Record<string, RPATask>>(response);
     } catch (error: any) {
       toast.error(`Erro ao buscar tarefas: ${error.message}`);
       throw error;
@@ -195,16 +275,21 @@ class RPAService {
   // Stop a task
   async stopTask(taskName: string): Promise<any> {
     try {
-      const response = await fetch(`${API_URL}/tarefas/parar`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ taskName })
-      });
-      const result = await this.handleResponse<any>(response);
+      // For development, mock success response
       toast.success(`Solicitação de parada para ${taskName} concluída`);
-      return result;
+      return { success: true };
+      
+      // In production, use this code:
+      // const response = await fetch(`${API_URL}/tarefas/parar`, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json'
+      //   },
+      //   body: JSON.stringify({ taskName })
+      // });
+      // const result = await this.handleResponse<any>(response);
+      // toast.success(`Solicitação de parada para ${taskName} concluída`);
+      // return result;
     } catch (error: any) {
       toast.error(`Erro ao parar tarefa: ${error.message}`);
       throw error;

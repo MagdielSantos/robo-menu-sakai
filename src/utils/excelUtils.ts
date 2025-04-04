@@ -3,6 +3,8 @@
  * Excel utility functions for generating and downloading Excel files
  */
 
+import { RPAExecution } from "@/services/RPAService";
+
 // Function to convert an array of objects to CSV format
 const convertToCSV = (objArray: any[]): string => {
   if (objArray.length === 0) return '';
@@ -65,17 +67,17 @@ export const formatDateForExcel = (dateString: string | null): string => {
 };
 
 // Format RPA executions for Excel export
-export const formatRPAExecutionsForExcel = (executions: any[]): any[] => {
+export const formatRPAExecutionsForExcel = (executions: RPAExecution[]): any[] => {
   return executions.map(exec => ({
-    "Status": exec.status || "---",
-    "Número de processo": exec.processNumber || "---",
-    "Nome do documento": exec.documentName ? exec.documentName.split('_').join(' ') : "---",
-    "Tipo do documento": exec.documentType || "---",
-    "Caminho do documento": exec.documentPath || "---",
-    "Pasta Max": exec.maxFolder || "---",
-    "Tempo de Execução": exec.executionTime || "---",
-    "Data Cadastrado": formatDateForExcel(exec.registrationDate),
-    "Data Início Execução": formatDateForExcel(exec.startDate),
-    "Data Fim Execução": formatDateForExcel(exec.endDate)
+    "Status": exec.status_proc || "---",
+    "Número de processo": exec.numero_de_processo || "---",
+    "Nome do documento": exec.nome_do_documento ? exec.nome_do_documento.split('_').join(' ') : "---",
+    "Tipo do documento": exec.tipo_do_documento || "---",
+    "Caminho do documento": exec.caminho_do_documento || "---",
+    "Pasta Max": exec.pasta_max || "---",
+    "Tempo de Execução": exec.tempo_de_execucao || "---",
+    "Data Cadastrado": formatDateForExcel(exec.data_cadastrado),
+    "Data Início Execução": formatDateForExcel(exec.data_inicio_exec),
+    "Data Fim Execução": formatDateForExcel(exec.data_fim_exec)
   }));
 };

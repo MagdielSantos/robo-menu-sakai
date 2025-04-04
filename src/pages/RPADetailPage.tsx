@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
@@ -107,35 +108,9 @@ const RPADetailPage = () => {
         ...baseRPA,
         name: projectInfo.nome_projeto,
         description: projectInfo.descricao_simples,
-        // Map the API data structure to our ExtendedRPA structure
-        projectInfo: {
-          name: projectInfo.nome_projeto,
-          active: projectInfo.ativo,
-          description: projectInfo.descricao_simples,
-          automaticProcessingSchedule: projectInfo.descricao_acionamento,
-          automaticIngestionSchedule: projectInfo.descricao_ingestao
-        },
-        statusCount: {
-          ignored: statusCount.ignorado,
-          pending: statusCount.pendente,
-          started: statusCount.iniciado,
-          completed: statusCount.sucesso,
-          error: statusCount.erro,
-          total: statusCount.total
-        },
-        executions: executions.map(exec => ({
-          id: exec.id,
-          status: exec.status_proc,
-          processNumber: exec.numero_de_processo,
-          documentName: exec.nome_do_documento,
-          documentType: exec.tipo_do_documento,
-          documentPath: exec.caminho_do_documento,
-          maxFolder: exec.pasta_max,
-          executionTime: exec.tempo_de_execucao,
-          registrationDate: exec.data_cadastrado,
-          startDate: exec.data_inicio_exec,
-          endDate: exec.data_fim_exec
-        }))
+        projectInfo: projectInfo,
+        statusCount: statusCount,
+        executions: executions
       });
     } catch (error) {
       console.error("Error fetching RPA data:", error);
@@ -156,14 +131,7 @@ const RPADetailPage = () => {
             if (!prev) return prev;
             return {
               ...prev,
-              statusCount: {
-                ignored: statusCount.ignorado,
-                pending: statusCount.pendente,
-                started: statusCount.iniciado,
-                completed: statusCount.sucesso,
-                error: statusCount.erro,
-                total: statusCount.total
-              }
+              statusCount: statusCount
             };
           });
         })
@@ -283,7 +251,7 @@ const RPADetailPage = () => {
   };
 
   const filteredExecutions = filterStatus && rpa?.executions
-    ? rpa.executions.filter(exec => exec.status === filterStatus) 
+    ? rpa.executions.filter(exec => exec.status_proc === filterStatus) 
     : rpa?.executions;
 
   if (loading) {
@@ -328,26 +296,26 @@ const RPADetailPage = () => {
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <h3 className="text-xl font-semibold">
-                  {rpa.projectInfo.name}
+                  {rpa.projectInfo.nome_projeto}
                 </h3>
-                {rpa.projectInfo.active ? (
+                {rpa.projectInfo.ativo ? (
                   <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-200">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Ativo
                   </Badge>
                 ) : (
-                  <Badge variant="destructive" className="bg-red-100 text-red-800 hover:bg-red-200">
+                  <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-200">
                     <XCircle className="h-3 w-3 mr-1" />
                     Inativo
                   </Badge>
                 )}
               </div>
-              <p className="text-base text-gray-900">{rpa.projectInfo.description}</p>
+              <p className="text-base text-gray-900">{rpa.projectInfo.descricao_simples}</p>
               <div className="text-sm text-gray-700">
-                <strong>Horário de Processamento Automático:</strong> {rpa.projectInfo.automaticProcessingSchedule}
+                <strong>Horário de Processamento Automático:</strong> {rpa.projectInfo.descricao_acionamento}
               </div>
               <div className="text-sm text-gray-700">
-                <strong>Horário de Ingestão Automático:</strong> {rpa.projectInfo.automaticIngestionSchedule}
+                <strong>Horário de Ingestão Automático:</strong> {rpa.projectInfo.descricao_ingestao}
               </div>
               <div className="text-sm text-gray-700">
                 <strong>Nota:</strong> Dê um duplo clique em um registro da tabela para copiar o texto.
@@ -366,7 +334,7 @@ const RPADetailPage = () => {
             <div className="flex justify-between items-center">
               <div>
                 <span className="block text-gray-500 font-medium mb-1">Ignorado</span>
-                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.ignored || 0}</div>
+                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.ignorado || 0}</div>
               </div>
               <div className="w-10 h-10 flex items-center justify-center bg-gray-200 rounded-full">
                 <XCircle className="text-gray-700 h-5 w-5" />
@@ -383,7 +351,7 @@ const RPADetailPage = () => {
             <div className="flex justify-between items-center">
               <div>
                 <span className="block text-gray-500 font-medium mb-1">Pendente</span>
-                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.pending || 0}</div>
+                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.pendente || 0}</div>
               </div>
               <div className="w-10 h-10 flex items-center justify-center bg-yellow-200 rounded-full">
                 <Clock className="text-yellow-700 h-5 w-5" />
@@ -400,7 +368,7 @@ const RPADetailPage = () => {
             <div className="flex justify-between items-center">
               <div>
                 <span className="block text-gray-500 font-medium mb-1">Iniciado</span>
-                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.started || 0}</div>
+                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.iniciado || 0}</div>
               </div>
               <div className="w-10 h-10 flex items-center justify-center bg-blue-200 rounded-full">
                 <Play className="text-blue-700 h-5 w-5" />
@@ -417,7 +385,7 @@ const RPADetailPage = () => {
             <div className="flex justify-between items-center">
               <div>
                 <span className="block text-gray-500 font-medium mb-1">Concluído</span>
-                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.completed || 0}</div>
+                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.sucesso || 0}</div>
               </div>
               <div className="w-10 h-10 flex items-center justify-center bg-green-200 rounded-full">
                 <CheckCircle className="text-green-700 h-5 w-5" />
@@ -434,7 +402,7 @@ const RPADetailPage = () => {
             <div className="flex justify-between items-center">
               <div>
                 <span className="block text-gray-500 font-medium mb-1">Erros</span>
-                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.error || 0}</div>
+                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.erro || 0}</div>
               </div>
               <div className="w-10 h-10 flex items-center justify-center bg-red-200 rounded-full">
                 <AlertTriangle className="text-red-700 h-5 w-5" />
@@ -492,56 +460,56 @@ const RPADetailPage = () => {
               filteredExecutions.map((exec) => (
                 <TableRow key={exec.id}>
                   <TableCell 
-                    className={`cursor-pointer ${copiedText === exec.status && copiedId === exec.id ? 'bg-blue-50' : ''}`}
-                    onDoubleClick={() => copyToClipboard(exec.status, exec.id)}
+                    className={`cursor-pointer ${copiedText === exec.status_proc && copiedId === exec.id ? 'bg-blue-50' : ''}`}
+                    onDoubleClick={() => copyToClipboard(exec.status_proc, exec.id)}
                   >
-                    <Badge className={getStatusVariant(exec.status)} variant="outline">
-                      {getStatusIcon(exec.status)}
-                      <span className="ml-1">{exec.status}</span>
+                    <Badge className={getStatusVariant(exec.status_proc)} variant="outline">
+                      {getStatusIcon(exec.status_proc)}
+                      <span className="ml-1">{exec.status_proc}</span>
                     </Badge>
                   </TableCell>
                   <TableCell 
-                    className={`cursor-pointer ${copiedText === exec.processNumber && copiedId === exec.id ? 'bg-blue-50' : ''}`}
-                    onDoubleClick={() => copyToClipboard(exec.processNumber, exec.id)}
+                    className={`cursor-pointer ${copiedText === exec.numero_de_processo && copiedId === exec.id ? 'bg-blue-50' : ''}`}
+                    onDoubleClick={() => copyToClipboard(exec.numero_de_processo, exec.id)}
                   >
-                    {exec.processNumber || '---'}
+                    {exec.numero_de_processo || '---'}
                   </TableCell>
                   <TableCell 
-                    className={`cursor-pointer ${copiedText === exec.documentName && copiedId === exec.id ? 'bg-blue-50' : ''}`}
-                    onDoubleClick={() => copyToClipboard(exec.documentName, exec.id)}
+                    className={`cursor-pointer ${copiedText === exec.nome_do_documento && copiedId === exec.id ? 'bg-blue-50' : ''}`}
+                    onDoubleClick={() => copyToClipboard(exec.nome_do_documento, exec.id)}
                   >
-                    {exec.documentName ? exec.documentName.split('_').join(' ') : '---'}
+                    {exec.nome_do_documento ? exec.nome_do_documento.split('_').join(' ') : '---'}
                   </TableCell>
                   <TableCell 
-                    className={`cursor-pointer ${copiedText === exec.documentType && copiedId === exec.id ? 'bg-blue-50' : ''}`}
-                    onDoubleClick={() => copyToClipboard(exec.documentType, exec.id)}
+                    className={`cursor-pointer ${copiedText === exec.tipo_do_documento && copiedId === exec.id ? 'bg-blue-50' : ''}`}
+                    onDoubleClick={() => copyToClipboard(exec.tipo_do_documento, exec.id)}
                   >
-                    {exec.documentType || '---'}
+                    {exec.tipo_do_documento || '---'}
                   </TableCell>
                   <TableCell 
-                    className={`cursor-pointer ${copiedText === exec.documentPath && copiedId === exec.id ? 'bg-blue-50' : ''}`}
-                    onDoubleClick={() => copyToClipboard(exec.documentPath, exec.id)}
+                    className={`cursor-pointer ${copiedText === exec.caminho_do_documento && copiedId === exec.id ? 'bg-blue-50' : ''}`}
+                    onDoubleClick={() => copyToClipboard(exec.caminho_do_documento, exec.id)}
                   >
-                    {exec.documentPath || '---'}
+                    {exec.caminho_do_documento || '---'}
                   </TableCell>
                   <TableCell 
-                    className={`cursor-pointer ${copiedText === exec.maxFolder && copiedId === exec.id ? 'bg-blue-50' : ''}`}
-                    onClick={() => goToMaxFolder(exec.maxFolder)}
-                    onDoubleClick={() => copyToClipboard(exec.maxFolder, exec.id)}
+                    className={`cursor-pointer ${copiedText === exec.pasta_max && copiedId === exec.id ? 'bg-blue-50' : ''}`}
+                    onClick={() => goToMaxFolder(exec.pasta_max)}
+                    onDoubleClick={() => copyToClipboard(exec.pasta_max, exec.id)}
                   >
-                    {exec.maxFolder || '---'}
+                    {exec.pasta_max || '---'}
                   </TableCell>
                   <TableCell>
-                    {exec.executionTime || '---'}
+                    {exec.tempo_de_execucao || '---'}
                   </TableCell>
                   <TableCell>
-                    {formatDate(exec.registrationDate)}
+                    {formatDate(exec.data_cadastrado)}
                   </TableCell>
                   <TableCell>
-                    {formatDate(exec.startDate)}
+                    {formatDate(exec.data_inicio_exec)}
                   </TableCell>
                   <TableCell>
-                    {formatDate(exec.endDate)}
+                    {formatDate(exec.data_fim_exec)}
                   </TableCell>
                 </TableRow>
               ))
