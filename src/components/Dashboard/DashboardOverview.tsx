@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Activity, AlertTriangle, PlayCircle, Robot } from 'lucide-react';
+import { Activity, AlertTriangle, PlayCircle, Bot } from 'lucide-react';
 import StatusCard from './StatusCard';
 import ExecutionChart from './ExecutionChart';
 
@@ -21,7 +21,7 @@ const DashboardOverview: React.FC = () => {
         <StatusCard 
           title="RPAs Ativos" 
           value={24} 
-          icon={<Robot className="h-4 w-4" />} 
+          icon={<Bot className="h-4 w-4" />} 
           status="active" 
           change="10%" 
           changeType="increase" 

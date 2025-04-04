@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Home, 
-  Robot, 
+  Bot, 
   PlayCircle, 
   ActivitySquare, 
   Shield, 
@@ -24,7 +24,7 @@ type MenuItem = {
 
 const menuItems: MenuItem[] = [
   { title: 'Dashboard', path: '/', icon: Home },
-  { title: 'Meus RPAs', path: '/rpas', icon: Robot },
+  { title: 'Meus RPAs', path: '/rpas', icon: Bot },
   { 
     title: 'Execuções', 
     path: '/execucoes', 

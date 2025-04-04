@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Calendar, ChevronDown, Clock, List, RefreshCcw } from 'lucide-react';
+import { Calendar, ChevronDown, Clock, List, RefreshCcw, PlusCircle } from 'lucide-react';
 import Header from '@/components/Layout/Header';
 import { 
   Table, 
