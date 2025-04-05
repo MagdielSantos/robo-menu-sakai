@@ -55,6 +55,7 @@ export interface FilterItem {
   field: string;
   matchMode: string;
   value: string;
+  additionalValue?: string;
 }
 
 export const DOCUMENT_TYPES = [
@@ -212,11 +213,11 @@ class RPAService {
     }
   }
 
-  applyFilter(filtro: RPAFiltro, field: string, filter: { matchMode: string; value: string } | null): RPAFiltro {
+  applyFilter(filtro: RPAFiltro, field: string, filter: { matchMode: string; value: string; additionalValue?: string } | null): RPAFiltro {
     const newFiltro = { ...filtro };
     
     // Remove the filter if null is passed
-    if (!filter || filter.value.trim() === '') {
+    if (!filter || (filter.value.trim() === '' && (!filter.additionalValue || filter.additionalValue.trim() === ''))) {
       switch (field) {
         case 'processNumber':
           newFiltro.numero_de_processo = undefined;
@@ -236,12 +237,16 @@ class RPAService {
         case 'status':
           newFiltro.status_proc = undefined;
           break;
+        case 'registrationDate':
+          newFiltro.data_inicial = undefined;
+          newFiltro.data_final = undefined;
+          break;
       }
       return newFiltro;
     }
     
     // Apply the filter with matchMode and value
-    const { matchMode, value } = filter;
+    const { matchMode, value, additionalValue } = filter;
     
     switch (field) {
       case 'processNumber':
@@ -262,6 +267,11 @@ class RPAService {
       case 'status':
         newFiltro.status_proc = value;
         break;
+      case 'registrationDate':
+        // Special handling for date range - directly set data_inicial and data_final
+        newFiltro.data_inicial = value || undefined;
+        newFiltro.data_final = additionalValue || undefined;
+        break;
     }
     
     return newFiltro;
@@ -278,7 +288,7 @@ class RPAService {
       'documentPath': 'caminho_do_documento',
       'maxFolder': 'pasta_max',
       'status': 'status_proc',
-      'registrationDate': '-data_cadastrado',
+      'registrationDate': 'data_cadastrado',
       'startDate': 'data_inicio_exec',
       'endDate': 'data_fim_exec'
     };
