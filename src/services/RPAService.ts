@@ -17,8 +17,20 @@ export class RPAFiltro {
   paginavel: boolean = true;
 }
 
+<<<<<<< HEAD
 const API_URL = 'http://127.0.0.1:8000';
 const TOKEN = '5438404c-ecf7-4eb2-87b7-7f419954eea7';
+=======
+// Utiliza a URL da API real
+const API_URL = 'https://api.sistemajur.com.br';
+
+export interface RPATask {
+  is_running: boolean;
+  erro_login: boolean;
+  start_time: string;
+  end_time: string;
+}
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
 
 export interface ProjectInfo {
   nome_projeto: string;
@@ -30,16 +42,16 @@ export interface ProjectInfo {
 
 export interface RPAExecution {
   id: string;
-  status: string;
-  processNumber: string;
-  documentName: string;
-  documentType: string;
-  documentPath: string;
-  maxFolder: string;
-  executionTime: string | null;
-  registrationDate: string;
-  startDate: string | null;
-  endDate: string | null;
+  status_proc: string;
+  numero_de_processo: string;
+  nome_do_documento: string;
+  tipo_do_documento: string;
+  caminho_do_documento: string;
+  pasta_max: string;
+  tempo_de_execucao: string | null;
+  data_cadastrado: string;
+  data_inicio_exec: string | null;
+  data_fim_exec: string | null;
 }
 
 export interface StatusCount {
@@ -94,7 +106,7 @@ class RPAService {
 
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({ detail: 'Erro desconhecido' }));
       const errorMessage = errorData.detail || 'Erro na requisição';
       throw new Error(errorMessage);
     }
@@ -105,6 +117,7 @@ class RPAService {
     try {
       filtro.paginavel = paginavel;
       const params = this.buildParams(filtro);
+<<<<<<< HEAD
       const response = await fetch(`${API_URL}/monitora_sharepoint/buscar/filtro?${params.toString()}`, {
         mode: 'cors',
         headers: {
@@ -127,13 +140,24 @@ class RPAService {
         endDate: item.data_fim_exec
       }));
 
+=======
+      
+      // Usar a API real
+      const response = await fetch(`${API_URL}/monitora_sharepoint/buscar/filtro?${params.toString()}`);
+      const data = await this.handleResponse<any>(response);
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
       return {
-        datas: mappedData,
+        datas: data.data,
         total: data.page_count
       };
     } catch (error: any) {
+      console.error('Error in pesquisar:', error);
       toast.error(`Erro ao buscar dados: ${error.message}`);
-      throw error;
+      // Em caso de falha na API, retorna dados vazios
+      return {
+        datas: [],
+        total: 0
+      };
     }
   }
 
@@ -147,8 +171,17 @@ class RPAService {
       });
       return await this.handleResponse<StatusCount>(response);
     } catch (error: any) {
+      console.error('Error in getStatusCount:', error);
       toast.error(`Erro ao buscar contagem de status: ${error.message}`);
-      throw error;
+      // Em caso de falha, retorna dados zeros
+      return {
+        ignorado: 0,
+        pendente: 0,
+        iniciado: 0,
+        sucesso: 0,
+        erro: 0,
+        total: 0
+      };
     }
   }
 
@@ -162,8 +195,16 @@ class RPAService {
       });
       return await this.handleResponse<ProjectInfo>(response);
     } catch (error: any) {
+      console.error('Error in getProjectInfo:', error);
       toast.error(`Erro ao buscar informações do projeto: ${error.message}`);
-      throw error;
+      // Em caso de falha, retorna dados default
+      return {
+        nome_projeto: "Informações indisponíveis",
+        ativo: false,
+        descricao_simples: "Não foi possível carregar as informações do projeto",
+        descricao_acionamento: "Informação indisponível",
+        descricao_ingestao: "Informação indisponível"
+      };
     }
   }
 
@@ -180,6 +221,7 @@ class RPAService {
       toast.success('Registro excluído com sucesso');
       return result;
     } catch (error: any) {
+      console.error('Error in deletar:', error);
       toast.error(`Erro ao excluir registro: ${error.message}`);
       throw error;
     }
@@ -187,7 +229,64 @@ class RPAService {
 
   async exportExcel(filtro: RPAFiltro): Promise<void> {
     try {
+<<<<<<< HEAD
       toast.success('Gerando a planilha Excel, aguarde!');
+=======
+      const response = await fetch(`${API_URL}/monitora_sharepoint/processar`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+      });
+      const result = await this.handleResponse<any>(response);
+      toast.success('Processamento iniciado com sucesso');
+      return result;
+    } catch (error: any) {
+      console.error('Error in processar:', error);
+      toast.error(`Erro ao iniciar processamento: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // Get tasks
+  async getTasks(): Promise<Record<string, RPATask>> {
+    try {
+      const response = await fetch(`${API_URL}/tarefas/obter/max_processar_sharepoint_`);
+      return await this.handleResponse<Record<string, RPATask>>(response);
+    } catch (error: any) {
+      console.error('Error in getTasks:', error);
+      toast.error(`Erro ao buscar tarefas: ${error.message}`);
+      // Em caso de falha, retorna objeto vazio
+      return {};
+    }
+  }
+
+  // Stop a task
+  async stopTask(taskName: string): Promise<any> {
+    try {
+      const response = await fetch(`${API_URL}/tarefas/parar`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ taskName })
+      });
+      const result = await this.handleResponse<any>(response);
+      toast.success(`Solicitação de parada para ${taskName} concluída`);
+      return result;
+    } catch (error: any) {
+      console.error('Error in stopTask:', error);
+      toast.error(`Erro ao parar tarefa: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // Export data to Excel
+  async exportToExcel(filtro: RPAFiltro): Promise<void> {
+    try {
+      // We get all data without pagination to export
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
       filtro.paginavel = false;
       const { datas } = await this.pesquisar(filtro, false);
       
@@ -207,6 +306,7 @@ class RPAService {
       exportExcel('Relatorio', modeloAtualizarProcesso);
       toast.success('Exportação concluída com sucesso');
     } catch (error: any) {
+      console.error('Error in exportToExcel:', error);
       toast.error(`Erro ao exportar dados: ${error.message}`);
       throw error;
     }

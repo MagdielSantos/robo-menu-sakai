@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
@@ -109,6 +110,7 @@ const RPADetailPage = () => {
       
       const statusCount = await rpaService.getStatusCount();
       
+<<<<<<< HEAD
       setRpa(prev => {
         if (!prev) return prev;
         return {
@@ -122,6 +124,23 @@ const RPADetailPage = () => {
             total: statusCount.total
           }
         };
+=======
+      // Fetch project info (in a real app we'd have the project ID from the RPA)
+      const projectId = '6716b7026b50052d250027df'; // This would come from the RPA data
+      const projectInfo = await rpaService.getProjectInfo(projectId);
+      
+      // Fetch executions
+      const { datas: executions } = await rpaService.pesquisar(filtro);
+      
+      // Update the RPA with all fetched data
+      setRpa({
+        ...baseRPA,
+        name: projectInfo.nome_projeto,
+        description: projectInfo.descricao_simples,
+        projectInfo: projectInfo,
+        statusCount: statusCount,
+        executions: executions
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
       });
       
       await fetchExecutions();
@@ -174,6 +193,7 @@ const RPADetailPage = () => {
             if (!prev) return prev;
             return {
               ...prev,
+<<<<<<< HEAD
               statusCount: {
                 ignorado: statusCount.ignorado,
                 pendente: statusCount.pendente,
@@ -182,6 +202,9 @@ const RPADetailPage = () => {
                 erro: statusCount.erro,
                 total: statusCount.total
               }
+=======
+              statusCount: statusCount
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
             };
           });
         })
@@ -314,6 +337,7 @@ const RPADetailPage = () => {
     }
   };
 
+<<<<<<< HEAD
   const totalPages = Math.ceil(totalRegistros / itensPorPagina);
   
   const goToFirstPage = () => {
@@ -371,6 +395,11 @@ const RPADetailPage = () => {
     setFilterStatus(null);
     setPagina(0);
   };
+=======
+  const filteredExecutions = filterStatus && rpa?.executions
+    ? rpa.executions.filter(exec => exec.status_proc === filterStatus) 
+    : rpa?.executions;
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
 
   if (loading) {
     return (
@@ -404,10 +433,52 @@ const RPADetailPage = () => {
         </div>
       </div>
 
+<<<<<<< HEAD
       <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-6 gap-4">
         <Card
           className="cursor-pointer hover:shadow-md transition-shadow"
           onClick={() => handleStatusCardClick('IGNORADO')}
+=======
+      {rpa?.projectInfo && (
+        <Card className="p-4">
+          <CardContent className="p-2">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-xl font-semibold">
+                  {rpa.projectInfo.nome_projeto}
+                </h3>
+                {rpa.projectInfo.ativo ? (
+                  <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-200">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Ativo
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-200">
+                    <XCircle className="h-3 w-3 mr-1" />
+                    Inativo
+                  </Badge>
+                )}
+              </div>
+              <p className="text-base text-gray-900">{rpa.projectInfo.descricao_simples}</p>
+              <div className="text-sm text-gray-700">
+                <strong>Horário de Processamento Automático:</strong> {rpa.projectInfo.descricao_acionamento}
+              </div>
+              <div className="text-sm text-gray-700">
+                <strong>Horário de Ingestão Automático:</strong> {rpa.projectInfo.descricao_ingestao}
+              </div>
+              <div className="text-sm text-gray-700">
+                <strong>Nota:</strong> Dê um duplo clique em um registro da tabela para copiar o texto.
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-shadow" 
+          onClick={() => setFilterStatus('IGNORADO')}
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
         >
           <CardContent className="p-4">
             <div className="flex justify-between items-center">
@@ -633,50 +704,88 @@ const RPADetailPage = () => {
             ) : dados && dados.length > 0 ? (
               dados.map((exec) => ( 
                 <TableRow key={exec.id}>
+<<<<<<< HEAD
                   <TableCell
                     className={`cursor-pointer ${copiedText === exec.status && copiedId === exec.id ? 'bg-blue-50' : ''}`}
                     onClick={() => copyToClipboard(exec.status, exec.id)}
+=======
+                  <TableCell 
+                    className={`cursor-pointer ${copiedText === exec.status_proc && copiedId === exec.id ? 'bg-blue-50' : ''}`}
+                    onDoubleClick={() => copyToClipboard(exec.status_proc, exec.id)}
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
                   >
-                    <Badge className={getStatusVariant(exec.status)} variant="outline">
-                      {getStatusIcon(exec.status)}
-                      <span className="ml-1">{exec.status}</span>
+                    <Badge className={getStatusVariant(exec.status_proc)} variant="outline">
+                      {getStatusIcon(exec.status_proc)}
+                      <span className="ml-1">{exec.status_proc}</span>
                     </Badge>
                   </TableCell>
+<<<<<<< HEAD
                   <TableCell
                     className={`cursor-pointer ${copiedText === exec.processNumber && copiedId === exec.id ? 'bg-blue-50' : ''}`}
                     onClick={() => copyToClipboard(exec.processNumber, exec.id)}
+=======
+                  <TableCell 
+                    className={`cursor-pointer ${copiedText === exec.numero_de_processo && copiedId === exec.id ? 'bg-blue-50' : ''}`}
+                    onDoubleClick={() => copyToClipboard(exec.numero_de_processo, exec.id)}
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
                   >
-                    {exec.processNumber || '---'}
+                    {exec.numero_de_processo || '---'}
                   </TableCell>
+<<<<<<< HEAD
                   <TableCell
                     className={`cursor-pointer ${copiedText === exec.documentName && copiedId === exec.id ? 'bg-blue-50' : ''}`}
                     onClick={() => copyToClipboard(exec.documentName, exec.id)}
+=======
+                  <TableCell 
+                    className={`cursor-pointer ${copiedText === exec.nome_do_documento && copiedId === exec.id ? 'bg-blue-50' : ''}`}
+                    onDoubleClick={() => copyToClipboard(exec.nome_do_documento, exec.id)}
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
                   >
-                    {exec.documentName ? exec.documentName.split('_').join(' ') : '---'}
+                    {exec.nome_do_documento ? exec.nome_do_documento.split('_').join(' ') : '---'}
                   </TableCell>
+<<<<<<< HEAD
                   <TableCell
                     className={`cursor-pointer ${copiedText === exec.documentType && copiedId === exec.id ? 'bg-blue-50' : ''}`}
                     onClick={() => copyToClipboard(exec.documentType, exec.id)}
+=======
+                  <TableCell 
+                    className={`cursor-pointer ${copiedText === exec.tipo_do_documento && copiedId === exec.id ? 'bg-blue-50' : ''}`}
+                    onDoubleClick={() => copyToClipboard(exec.tipo_do_documento, exec.id)}
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
                   >
-                    {exec.documentType || '---'}
+                    {exec.tipo_do_documento || '---'}
                   </TableCell>
+<<<<<<< HEAD
                   <TableCell
                     className={`cursor-pointer ${copiedText === exec.documentPath && copiedId === exec.id ? 'bg-blue-50' : ''}`}
                     onClick={() => copyToClipboard(exec.documentPath, exec.id)}
+=======
+                  <TableCell 
+                    className={`cursor-pointer ${copiedText === exec.caminho_do_documento && copiedId === exec.id ? 'bg-blue-50' : ''}`}
+                    onDoubleClick={() => copyToClipboard(exec.caminho_do_documento, exec.id)}
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
                   >
-                    {exec.documentPath || '---'}
+                    {exec.caminho_do_documento || '---'}
                   </TableCell>
+<<<<<<< HEAD
                   <TableCell
                     className={`cursor-pointer ${copiedText === exec.maxFolder && copiedId === exec.id ? 'bg-blue-50' : ''}`}
                     onClick={() => goToMaxFolder(exec.maxFolder)}
+=======
+                  <TableCell 
+                    className={`cursor-pointer ${copiedText === exec.pasta_max && copiedId === exec.id ? 'bg-blue-50' : ''}`}
+                    onClick={() => goToMaxFolder(exec.pasta_max)}
+                    onDoubleClick={() => copyToClipboard(exec.pasta_max, exec.id)}
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
                   >
-                    {exec.maxFolder || '---'}
+                    {exec.pasta_max || '---'}
                   </TableCell>
                   <TableCell>{exec.executionTime || '---'}</TableCell>
                   <TableCell>{formatDate(exec.registrationDate)}</TableCell>
                   <TableCell>{formatDate(exec.startDate)}</TableCell>
                   <TableCell>{formatDate(exec.endDate)}</TableCell>
                   <TableCell>
+<<<<<<< HEAD
                     <Button
                       variant="ghost"
                       size="icon"
@@ -685,6 +794,18 @@ const RPADetailPage = () => {
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
+=======
+                    {exec.tempo_de_execucao || '---'}
+                  </TableCell>
+                  <TableCell>
+                    {formatDate(exec.data_cadastrado)}
+                  </TableCell>
+                  <TableCell>
+                    {formatDate(exec.data_inicio_exec)}
+                  </TableCell>
+                  <TableCell>
+                    {formatDate(exec.data_fim_exec)}
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
                   </TableCell>
                 </TableRow>
               ))
