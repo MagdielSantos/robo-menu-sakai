@@ -16,7 +16,7 @@ import RPACard, { RPA } from './RPACard';
 const mockRPAs: RPA[] = [
   {
     id: "1",
-    name: "Processamento de Faturas",
+    name: "Monitora Sharepoint Max",
     description: "Automatização do processo de captura e classificação de faturas recebidas por email.",
     status: "active",
     category: "Financeiro",

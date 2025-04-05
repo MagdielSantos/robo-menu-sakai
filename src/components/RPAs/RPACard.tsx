@@ -112,7 +112,7 @@ const RPACard: React.FC<RPACardProps> = ({ rpa, onToggleFavorite, onExecute }) =
         <Button asChild variant="outline" size="sm">
           <Link to={`/rpas/${rpa.id}`}>
             <Edit className="h-3 w-3 mr-1" />
-            Detalhes
+            Registros
           </Link>
         </Button>
         <Button onClick={() => onExecute(rpa.id)} size="sm" variant="default">

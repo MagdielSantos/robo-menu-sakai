@@ -10,7 +10,12 @@ import {
   FileText, 
   RefreshCw, 
   Bot, 
-  Download 
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,17 +39,21 @@ import {
   DialogHeader,
   DialogTitle
 } from "@/components/ui/dialog";
-import { rpaService, RPAFiltro, RPAExecution, StatusCount, ProjectInfo, RPATask } from '@/services/RPAService';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import { rpaService, RPAFiltro, RPAExecution, StatusCount } from '@/services/RPAService';
+import FilterableColumnHeader from '@/components/Table/FilterableColumnHeader'; 
 
-// Extended RPA interface to include additional properties we need
 interface ExtendedRPA extends RPA {
-  projectInfo?: ProjectInfo;
   statusCount?: StatusCount;
-  tasks?: Record<string, RPATask>;
   executions?: RPAExecution[];
 }
 
-// Helper function to format dates
 const formatDate = (dateString: string | null) => {
   if (!dateString) return "---";
   const date = new Date(dateString);
@@ -58,28 +67,34 @@ const RPADetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const [rpa, setRpa] = useState<ExtendedRPA | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
   const [confirmExportDialogOpen, setConfirmExportDialogOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [filtro] = useState(new RPAFiltro());
+  const [filtro, setFiltro] = useState(new RPAFiltro());
+  const [dados, setDados] = useState<RPAExecution[]>([]);
+  const [totalRegistros, setTotalRegistros] = useState(0);
+  const [pagina, setPagina] = useState(0);
+  const [itensPorPagina, setItensPorPagina] = useState(10);
+  const [carregandoPaginacao, setCarregandoPaginacao] = useState(false);
+  const [confirmDeleteDialogOpen, setConfirmDeleteDialogOpen] = useState(false);
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+  const [activeFilters, setActiveFilters] = useState<{[key: string]: {matchMode: string; value: string}}>({});
+  const [activeDateRange, setActiveDateRange] = useState<{startDate: string | null; endDate: string | null}>({
+    startDate: null,
+    endDate: null
+  });
+  const [sortField, setSortField] = useState('');
 
-  // Fetch RPA data
   const fetchRPAData = async () => {
     setLoading(true);
     try {
-      // In a real application, we would fetch the RPA by id
-      // For now we'll use the mock data structure but in the future we'd do:
-      // const rpaData = await fetchRPAById(id);
-      
       if (!id) {
         toast.error("ID do RPA não fornecido");
         setLoading(false);
         return;
       }
       
-      // Create a base RPA object
       const baseRPA: ExtendedRPA = {
         id: id,
         name: "Carregando...",
@@ -92,51 +107,24 @@ const RPADetailPage = () => {
       
       setRpa(baseRPA);
       
-      // Fetch status counts
       const statusCount = await rpaService.getStatusCount();
       
-      // Fetch project info (in a real app we'd have the project ID from the RPA)
-      const projectId = '6716b7026b50052d250027df'; // This would come from the RPA data
-      const projectInfo = await rpaService.getProjectInfo(projectId);
-      
-      // Fetch executions
-      const { datas: executions } = await rpaService.pesquisar(filtro);
-      
-      // Update the RPA with all fetched data
-      setRpa({
-        ...baseRPA,
-        name: projectInfo.nome_projeto,
-        description: projectInfo.descricao_simples,
-        // Map the API data structure to our ExtendedRPA structure
-        projectInfo: {
-          name: projectInfo.nome_projeto,
-          active: projectInfo.ativo,
-          description: projectInfo.descricao_simples,
-          automaticProcessingSchedule: projectInfo.descricao_acionamento,
-          automaticIngestionSchedule: projectInfo.descricao_ingestao
-        },
-        statusCount: {
-          ignored: statusCount.ignorado,
-          pending: statusCount.pendente,
-          started: statusCount.iniciado,
-          completed: statusCount.sucesso,
-          error: statusCount.erro,
-          total: statusCount.total
-        },
-        executions: executions.map(exec => ({
-          id: exec.id,
-          status: exec.status_proc,
-          processNumber: exec.numero_de_processo,
-          documentName: exec.nome_do_documento,
-          documentType: exec.tipo_do_documento,
-          documentPath: exec.caminho_do_documento,
-          maxFolder: exec.pasta_max,
-          executionTime: exec.tempo_de_execucao,
-          registrationDate: exec.data_cadastrado,
-          startDate: exec.data_inicio_exec,
-          endDate: exec.data_fim_exec
-        }))
+      setRpa(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          statusCount: {
+            ignorado: statusCount.ignorado,
+            pendente: statusCount.pendente,
+            iniciado: statusCount.iniciado,
+            sucesso: statusCount.sucesso,
+            erro: statusCount.erro,
+            total: statusCount.total
+          }
+        };
       });
+      
+      await fetchExecutions();
     } catch (error) {
       console.error("Error fetching RPA data:", error);
       toast.error("Erro ao carregar dados do RPA");
@@ -145,10 +133,40 @@ const RPADetailPage = () => {
     }
   };
   
+  const fetchExecutions = async () => {
+    setCarregandoPaginacao(true);
+    try {
+      let updatedFiltro = { ...filtro };
+      updatedFiltro.skip = pagina * itensPorPagina;
+      updatedFiltro.itensPorPagina = itensPorPagina;
+      
+      if (filterStatus) {
+        updatedFiltro.status_proc = filterStatus;
+      }
+      
+      const { datas: executions, total } = await rpaService.pesquisar(updatedFiltro);
+      
+      setDados(executions);
+      setTotalRegistros(total);
+      
+      setRpa(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          executions
+        };
+      });
+    } catch (error) {
+      console.error("Error fetching executions:", error);
+      toast.error("Erro ao carregar execuções");
+    } finally {
+      setCarregandoPaginacao(false);
+    }
+  };
+  
   useEffect(() => {
     fetchRPAData();
     
-    // Set up interval for refreshing status counts
     const interval = setInterval(() => {
       rpaService.getStatusCount()
         .then(statusCount => {
@@ -157,27 +175,27 @@ const RPADetailPage = () => {
             return {
               ...prev,
               statusCount: {
-                ignored: statusCount.ignorado,
-                pending: statusCount.pendente,
-                started: statusCount.iniciado,
-                completed: statusCount.sucesso,
-                error: statusCount.erro,
+                ignorado: statusCount.ignorado,
+                pendente: statusCount.pendente,
+                iniciado: statusCount.iniciado,
+                sucesso: statusCount.sucesso,
+                erro: statusCount.erro,
                 total: statusCount.total
               }
             };
           });
         })
         .catch(error => console.error("Error refreshing status counts:", error));
-        
-      // If tasks dialog is open, refresh tasks
-      if (tasksDialogOpen) {
-        fetchTasks();
-      }
-    }, 5000); // Refresh every 5 seconds
+    }, 5000);
     
-    // Clean up interval on unmount
     return () => clearInterval(interval);
-  }, [id, tasksDialogOpen]);
+  }, [id]);
+  
+  useEffect(() => {
+    if (!loading) {
+      fetchExecutions();
+    }
+  }, [pagina, itensPorPagina, filterStatus, filtro]);
 
   const handleExecute = () => {
     toast.success(`Iniciando execução: ${rpa?.name}`);
@@ -185,7 +203,7 @@ const RPADetailPage = () => {
 
   const handleReportIncident = () => {
     window.open(
-      'https://dev.azure.com/example/report-incident',
+      'https://dev.azure.com/ernestoborgesms/SOLICITAR%20PROJETO%20OU%20INCIDENTE/SOLICITAR%20PROJETO%20OU%20INCIDENTE%20Team/_workitems/create/registrar%20incidentes%20ou%20solicita%C3%A7%C3%A3o',
       '_blank'
     );
   };
@@ -198,66 +216,80 @@ const RPADetailPage = () => {
     );
   };
 
-  const copyToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text)
-      .then(() => {
-        toast.success('Texto copiado com sucesso.');
-        setCopiedText(text);
-        setCopiedId(id);
-        setTimeout(() => {
-          setCopiedText(null);
-          setCopiedId(null);
-        }, 5000);
-      })
-      .catch(() => toast.error('Erro ao copiar texto.'));
-  };
-
-  const fetchTasks = async () => {
-    try {
-      const tasks = await rpaService.getTasks();
-      setRpa(prev => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          tasks
-        };
-      });
-    } catch (error) {
-      console.error("Error fetching tasks:", error);
-    }
-  };
-
-  const handleOpenTasksDialog = async () => {
-    await fetchTasks();
-    setTasksDialogOpen(true);
-  };
-
   const exportToExcel = async () => {
     setConfirmExportDialogOpen(false);
     toast.success('Exportando dados para Excel...');
     try {
-      await rpaService.exportToExcel(filtro);
+      await rpaService.exportExcel(filtro);
     } catch (error) {
       console.error("Error exporting to Excel:", error);
     }
   };
 
-  const startTask = async () => {
-    try {
-      await rpaService.processar();
-      await fetchTasks();
-    } catch (error) {
-      console.error("Error starting task:", error);
-    }
+  const handleDeleteConfirm = (id: string) => {
+    setSelectedRecordId(id);
+    setConfirmDeleteDialogOpen(true);
   };
 
-  const stopTask = async (taskKey: string) => {
-    try {
-      await rpaService.stopTask(taskKey);
-      await fetchTasks();
-    } catch (error) {
-      console.error("Error stopping task:", error);
+  const handleDelete = async () => {
+    if (selectedRecordId) {
+      try {
+        await rpaService.deletar(selectedRecordId);
+        fetchExecutions(); // Refresh the data
+      } catch (error) {
+        console.error("Error deleting record:", error);
+      }
     }
+    setConfirmDeleteDialogOpen(false);
+    setSelectedRecordId(null);
+  };
+
+  const handleApplyFilter = (field: string, filter: { matchMode: string; value: string } | null) => {
+    // Update active filters state
+    if (filter && filter.value) {
+      setActiveFilters(prev => ({
+        ...prev,
+        [field]: filter
+      }));
+    } else {
+      const newFilters = { ...activeFilters };
+      delete newFilters[field];
+      setActiveFilters(newFilters);
+    }
+    
+    // Apply filter to the service
+    const newFiltro = rpaService.applyFilter(filtro, field, filter);
+    setFiltro(newFiltro);
+    setPagina(0); // Reset to first page
+  };
+
+  const handleDateRangeFilter = (field: string, dateRange: { startDate: string | null; endDate: string | null }) => {
+    // Update active date range state
+    setActiveDateRange(dateRange);
+    
+    // Apply date range to the filtro
+    const newFiltro = { ...filtro };
+    
+    if (dateRange.startDate) {
+      newFiltro.data_inicial = dateRange.startDate;
+    } else {
+      newFiltro.data_inicial = undefined;
+    }
+    
+    if (dateRange.endDate) {
+      newFiltro.data_final = dateRange.endDate;
+    } else {
+      newFiltro.data_final = undefined;
+    }
+    
+    setFiltro(newFiltro);
+    setPagina(0); // Reset to first page
+  };
+
+  const handleSort = (field: string) => {
+    setSortField(field);
+    const newFiltro = rpaService.updateSort(filtro, field);
+    setFiltro(newFiltro);
   };
 
   const getStatusVariant = (status: string) => {
@@ -282,9 +314,63 @@ const RPADetailPage = () => {
     }
   };
 
-  const filteredExecutions = filterStatus && rpa?.executions
-    ? rpa.executions.filter(exec => exec.status === filterStatus) 
-    : rpa?.executions;
+  const totalPages = Math.ceil(totalRegistros / itensPorPagina);
+  
+  const goToFirstPage = () => {
+    setPagina(0);
+  };
+  
+  const goToPreviousPage = () => {
+    if (pagina > 0) {
+      setPagina(pagina - 1);
+    }
+  };
+  
+  const goToNextPage = () => {
+    if (pagina < totalPages - 1) {
+      setPagina(pagina + 1);
+    }
+  };
+  
+  const goToLastPage = () => {
+    setPagina(totalPages - 1);
+  };
+  
+  const handlePerPageChange = (value: string) => {
+    setItensPorPagina(parseInt(value));
+    setPagina(0);
+  };
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedText(text);
+    setCopiedId(id);
+    toast.success("Copiado para a área de transferência!");
+    
+    setTimeout(() => {
+      setCopiedText(null);
+      setCopiedId(null);
+    }, 2000);
+  };
+
+  const handleStatusCardClick = (status: string | null) => {
+    setFilterStatus(status);
+    
+    // If status is not null, add it as a filter
+    if (status) {
+      handleApplyFilter('status', { matchMode: 'equals', value: status });
+    } else {
+      handleApplyFilter('status', null);
+    }
+  };
+
+  const handleClearAllFilters = () => {
+    setActiveFilters({});
+    setActiveDateRange({ startDate: null, endDate: null });
+    setFiltro(new RPAFiltro());
+    setFilterStatus(null);
+    setPagina(0);
+  };
 
   if (loading) {
     return (
@@ -305,15 +391,11 @@ const RPADetailPage = () => {
           </Button>
           <Header pageTitle={rpa?.name || 'Detalhes do RPA'} />
         </div>
-        
+
         <div className="flex flex-wrap gap-2">
           <Button variant="destructive" onClick={handleReportIncident}>
             <AlertTriangle className="h-4 w-4 mr-2" />
             Registrar Incidente
-          </Button>
-          <Button variant="secondary" onClick={handleOpenTasksDialog}>
-            <Bot className="h-4 w-4 mr-2" />
-            Monitorar Robô
           </Button>
           <Button variant="outline" onClick={() => setConfirmExportDialogOpen(true)}>
             <FileText className="h-4 w-4 mr-2" />
@@ -322,51 +404,16 @@ const RPADetailPage = () => {
         </div>
       </div>
 
-      {rpa?.projectInfo && (
-        <Card className="p-4">
-          <CardContent className="p-2">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <h3 className="text-xl font-semibold">
-                  {rpa.projectInfo.name}
-                </h3>
-                {rpa.projectInfo.active ? (
-                  <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-200">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Ativo
-                  </Badge>
-                ) : (
-                  <Badge variant="destructive" className="bg-red-100 text-red-800 hover:bg-red-200">
-                    <XCircle className="h-3 w-3 mr-1" />
-                    Inativo
-                  </Badge>
-                )}
-              </div>
-              <p className="text-base text-gray-900">{rpa.projectInfo.description}</p>
-              <div className="text-sm text-gray-700">
-                <strong>Horário de Processamento Automático:</strong> {rpa.projectInfo.automaticProcessingSchedule}
-              </div>
-              <div className="text-sm text-gray-700">
-                <strong>Horário de Ingestão Automático:</strong> {rpa.projectInfo.automaticIngestionSchedule}
-              </div>
-              <div className="text-sm text-gray-700">
-                <strong>Nota:</strong> Dê um duplo clique em um registro da tabela para copiar o texto.
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-        <Card 
-          className="cursor-pointer hover:shadow-md transition-shadow" 
-          onClick={() => setFilterStatus('IGNORADO')}
+      <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-6 gap-4">
+        <Card
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => handleStatusCardClick('IGNORADO')}
         >
           <CardContent className="p-4">
             <div className="flex justify-between items-center">
               <div>
                 <span className="block text-gray-500 font-medium mb-1">Ignorado</span>
-                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.ignored || 0}</div>
+                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.ignorado || 0}</div>
               </div>
               <div className="w-10 h-10 flex items-center justify-center bg-gray-200 rounded-full">
                 <XCircle className="text-gray-700 h-5 w-5" />
@@ -375,15 +422,15 @@ const RPADetailPage = () => {
           </CardContent>
         </Card>
 
-        <Card 
-          className="cursor-pointer hover:shadow-md transition-shadow" 
-          onClick={() => setFilterStatus('PENDENTE')}
+        <Card
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => handleStatusCardClick('PENDENTE')}
         >
           <CardContent className="p-4">
             <div className="flex justify-between items-center">
               <div>
                 <span className="block text-gray-500 font-medium mb-1">Pendente</span>
-                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.pending || 0}</div>
+                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.pendente || 0}</div>
               </div>
               <div className="w-10 h-10 flex items-center justify-center bg-yellow-200 rounded-full">
                 <Clock className="text-yellow-700 h-5 w-5" />
@@ -392,15 +439,15 @@ const RPADetailPage = () => {
           </CardContent>
         </Card>
 
-        <Card 
-          className="cursor-pointer hover:shadow-md transition-shadow" 
-          onClick={() => setFilterStatus('INICIADO')}
+        <Card
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => handleStatusCardClick('INICIADO')}
         >
           <CardContent className="p-4">
             <div className="flex justify-between items-center">
               <div>
                 <span className="block text-gray-500 font-medium mb-1">Iniciado</span>
-                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.started || 0}</div>
+                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.iniciado || 0}</div>
               </div>
               <div className="w-10 h-10 flex items-center justify-center bg-blue-200 rounded-full">
                 <Play className="text-blue-700 h-5 w-5" />
@@ -409,15 +456,15 @@ const RPADetailPage = () => {
           </CardContent>
         </Card>
 
-        <Card 
-          className="cursor-pointer hover:shadow-md transition-shadow" 
-          onClick={() => setFilterStatus('CONCLUÍDO')}
+        <Card
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => handleStatusCardClick('CONCLUÍDO')}
         >
           <CardContent className="p-4">
             <div className="flex justify-between items-center">
               <div>
                 <span className="block text-gray-500 font-medium mb-1">Concluído</span>
-                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.completed || 0}</div>
+                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.sucesso || 0}</div>
               </div>
               <div className="w-10 h-10 flex items-center justify-center bg-green-200 rounded-full">
                 <CheckCircle className="text-green-700 h-5 w-5" />
@@ -426,15 +473,15 @@ const RPADetailPage = () => {
           </CardContent>
         </Card>
 
-        <Card 
-          className="cursor-pointer hover:shadow-md transition-shadow" 
-          onClick={() => setFilterStatus('ERRO')}
+        <Card
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => handleStatusCardClick('ERRO')}
         >
           <CardContent className="p-4">
             <div className="flex justify-between items-center">
               <div>
                 <span className="block text-gray-500 font-medium mb-1">Erros</span>
-                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.error || 0}</div>
+                <div className="text-gray-900 font-bold text-2xl">{rpa?.statusCount?.erro || 0}</div>
               </div>
               <div className="w-10 h-10 flex items-center justify-center bg-red-200 rounded-full">
                 <AlertTriangle className="text-red-700 h-5 w-5" />
@@ -443,9 +490,9 @@ const RPADetailPage = () => {
           </CardContent>
         </Card>
 
-        <Card 
-          className="cursor-pointer hover:shadow-md transition-shadow col-span-full md:col-span-1" 
-          onClick={() => setFilterStatus(null)}
+        <Card
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => handleStatusCardClick(null)}
         >
           <CardContent className="p-4">
             <div className="flex justify-between items-center">
@@ -466,162 +513,253 @@ const RPADetailPage = () => {
           <h3 className="text-lg font-medium">
             Registros {filterStatus ? `(${filterStatus})` : ''}
           </h3>
-          {filterStatus && (
-            <Button variant="ghost" size="sm" onClick={() => setFilterStatus(null)}>
-              Mostrar todos
+          {(Object.keys(activeFilters).length > 0 || activeDateRange.startDate || activeDateRange.endDate) && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleClearAllFilters}
+            >
+              Limpar filtros
             </Button>
           )}
         </div>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Status</TableHead>
-              <TableHead>Número de processo</TableHead>
-              <TableHead>Nome do documento</TableHead>
-              <TableHead>Tipo do documento</TableHead>
-              <TableHead>Caminho do documento</TableHead>
-              <TableHead>Pasta Max</TableHead>
-              <TableHead>Tempo de Execução</TableHead>
-              <TableHead>Data cadastrado</TableHead>
-              <TableHead>Data Início Execução</TableHead>
-              <TableHead>Data Fim Execução</TableHead>
+              <TableHead>
+                <FilterableColumnHeader
+                  title="Status"
+                  field="status"
+                  onSort={handleSort}
+                  onFilter={handleApplyFilter}
+                  currentFilter={activeFilters.status}
+                  isSorted={sortField === 'status'}
+                />
+              </TableHead>
+              <TableHead>
+                <FilterableColumnHeader
+                  title="Número de processo"
+                  field="processNumber"
+                  onSort={handleSort}
+                  onFilter={handleApplyFilter}
+                  currentFilter={activeFilters.processNumber}
+                  isSorted={sortField === 'processNumber'}
+                />
+              </TableHead>
+              <TableHead>
+                <FilterableColumnHeader
+                  title="Nome do documento"
+                  field="documentName"
+                  onSort={handleSort}
+                  onFilter={handleApplyFilter}
+                  currentFilter={activeFilters.documentName}
+                  isSorted={sortField === 'documentName'}
+                />
+              </TableHead>
+              <TableHead>
+                <FilterableColumnHeader
+                  title="Tipo do documento"
+                  field="documentType"
+                  onSort={handleSort}
+                  onFilter={handleApplyFilter}
+                  currentFilter={activeFilters.documentType}
+                  isSorted={sortField === 'documentType'}
+                />
+              </TableHead>
+              <TableHead>
+                <FilterableColumnHeader
+                  title="Caminho do documento"
+                  field="documentPath"
+                  onSort={handleSort}
+                  onFilter={handleApplyFilter}
+                  currentFilter={activeFilters.documentPath}
+                  isSorted={sortField === 'documentPath'}
+                />
+              </TableHead>
+              <TableHead>
+                <FilterableColumnHeader
+                  title="Pasta Max"
+                  field="maxFolder"
+                  onSort={handleSort}
+                  onFilter={handleApplyFilter}
+                  currentFilter={activeFilters.maxFolder}
+                  isSorted={sortField === 'maxFolder'}
+                />
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center space-x-1">
+                  <div className="flex-1 whitespace-nowrap">Tempo de Execução</div>
+                </div>
+              </TableHead>
+              <TableHead>
+                <FilterableColumnHeader
+                  title="Data cadastrado"
+                  field="registrationDate"
+                  onSort={handleSort}
+                  onDateRangeFilter={handleDateRangeFilter}
+                  currentDateRange={activeDateRange}
+                  isSorted={sortField === 'registrationDate'}
+                  isDateFilter={true}
+                />
+              </TableHead>
+              <TableHead>
+                <FilterableColumnHeader
+                  title="Data Início Execução"
+                  field="startDate"
+                  onSort={handleSort}
+                  isSorted={sortField === 'startDate'}
+                />
+              </TableHead>
+              <TableHead>
+                <FilterableColumnHeader
+                  title="Data Fim Execução"
+                  field="endDate"
+                  onSort={handleSort}
+                  isSorted={sortField === 'endDate'}
+                />
+              </TableHead>
+              <TableHead className="w-10">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredExecutions && filteredExecutions.length > 0 ? (
-              filteredExecutions.map((exec) => (
+            {carregandoPaginacao ? (
+              <TableRow>
+                <TableCell colSpan={11} className="text-center py-6">
+                  <div className="flex justify-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : dados && dados.length > 0 ? (
+              dados.map((exec) => ( 
                 <TableRow key={exec.id}>
-                  <TableCell 
+                  <TableCell
                     className={`cursor-pointer ${copiedText === exec.status && copiedId === exec.id ? 'bg-blue-50' : ''}`}
-                    onDoubleClick={() => copyToClipboard(exec.status, exec.id)}
+                    onClick={() => copyToClipboard(exec.status, exec.id)}
                   >
                     <Badge className={getStatusVariant(exec.status)} variant="outline">
                       {getStatusIcon(exec.status)}
                       <span className="ml-1">{exec.status}</span>
                     </Badge>
                   </TableCell>
-                  <TableCell 
+                  <TableCell
                     className={`cursor-pointer ${copiedText === exec.processNumber && copiedId === exec.id ? 'bg-blue-50' : ''}`}
-                    onDoubleClick={() => copyToClipboard(exec.processNumber, exec.id)}
+                    onClick={() => copyToClipboard(exec.processNumber, exec.id)}
                   >
                     {exec.processNumber || '---'}
                   </TableCell>
-                  <TableCell 
+                  <TableCell
                     className={`cursor-pointer ${copiedText === exec.documentName && copiedId === exec.id ? 'bg-blue-50' : ''}`}
-                    onDoubleClick={() => copyToClipboard(exec.documentName, exec.id)}
+                    onClick={() => copyToClipboard(exec.documentName, exec.id)}
                   >
                     {exec.documentName ? exec.documentName.split('_').join(' ') : '---'}
                   </TableCell>
-                  <TableCell 
+                  <TableCell
                     className={`cursor-pointer ${copiedText === exec.documentType && copiedId === exec.id ? 'bg-blue-50' : ''}`}
-                    onDoubleClick={() => copyToClipboard(exec.documentType, exec.id)}
+                    onClick={() => copyToClipboard(exec.documentType, exec.id)}
                   >
                     {exec.documentType || '---'}
                   </TableCell>
-                  <TableCell 
+                  <TableCell
                     className={`cursor-pointer ${copiedText === exec.documentPath && copiedId === exec.id ? 'bg-blue-50' : ''}`}
-                    onDoubleClick={() => copyToClipboard(exec.documentPath, exec.id)}
+                    onClick={() => copyToClipboard(exec.documentPath, exec.id)}
                   >
                     {exec.documentPath || '---'}
                   </TableCell>
-                  <TableCell 
+                  <TableCell
                     className={`cursor-pointer ${copiedText === exec.maxFolder && copiedId === exec.id ? 'bg-blue-50' : ''}`}
                     onClick={() => goToMaxFolder(exec.maxFolder)}
-                    onDoubleClick={() => copyToClipboard(exec.maxFolder, exec.id)}
                   >
                     {exec.maxFolder || '---'}
                   </TableCell>
+                  <TableCell>{exec.executionTime || '---'}</TableCell>
+                  <TableCell>{formatDate(exec.registrationDate)}</TableCell>
+                  <TableCell>{formatDate(exec.startDate)}</TableCell>
+                  <TableCell>{formatDate(exec.endDate)}</TableCell>
                   <TableCell>
-                    {exec.executionTime || '---'}
-                  </TableCell>
-                  <TableCell>
-                    {formatDate(exec.registrationDate)}
-                  </TableCell>
-                  <TableCell>
-                    {formatDate(exec.startDate)}
-                  </TableCell>
-                  <TableCell>
-                    {formatDate(exec.endDate)}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteConfirm(exec.id)}
+                      className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-6">
+                <TableCell colSpan={11} className="text-center py-6">
                   Nenhum registro encontrado.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
+        
+        <div className="flex items-center justify-between px-4 py-3 border-t">
+          <div className="flex items-center">
+            <span className="text-sm text-gray-700 mr-2">Itens por página:</span>
+            <Select value={itensPorPagina.toString()} onValueChange={handlePerPageChange}>
+              <SelectTrigger className="w-16 h-8">
+                <SelectValue placeholder="10" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <span className="ml-4 text-sm text-gray-700">
+              Mostrando {pagina * itensPorPagina + 1} - {Math.min((pagina + 1) * itensPorPagina, totalRegistros)} de {totalRegistros}
+            </span>
+          </div>
+          
+          <div className="flex items-center space-x-1">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={goToFirstPage}
+              disabled={pagina === 0 || carregandoPaginacao}
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={goToPreviousPage}
+              disabled={pagina === 0 || carregandoPaginacao}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            
+            <div className="px-3 py-1 rounded bg-gray-100 text-gray-800">
+              {pagina + 1} / {totalPages || 1}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={goToNextPage}
+              disabled={pagina >= totalPages - 1 || carregandoPaginacao}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={goToLastPage}
+              disabled={pagina >= totalPages - 1 || carregandoPaginacao}
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {/* Tasks Dialog */}
-      <Dialog open={tasksDialogOpen} onOpenChange={setTasksDialogOpen}>
-        <DialogContent className="sm:max-w-[900px]">
-          <DialogHeader>
-            <DialogTitle>Robôs</DialogTitle>
-            <DialogDescription>
-              Esses processos são executados automaticamente diariamente.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {rpa?.tasks && Object.entries(rpa.tasks).map(([key, task], index) => (
-              <Card key={key} className="p-4">
-                <div className={task.is_running ? "bg-green-300 h-2 rounded-t-md -mt-4 -mx-4 mb-3" : "bg-red-300 h-2 rounded-t-md -mt-4 -mx-4 mb-3"}></div>
-                <div className="space-y-2">
-                  <div>
-                    <span className="font-semibold">Identificador:</span> {key}
-                  </div>
-                  <div>
-                    <span className="font-semibold">Erro Login:</span>{' '}
-                    <span className={task.erro_login ? "text-green-600" : "text-red-600"}>
-                      {task.erro_login ? 'Sim' : 'Não'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-semibold">Início:</span> {formatDate(task.start_time)}
-                  </div>
-                  <div>
-                    <span className="font-semibold">Término:</span> {formatDate(task.end_time)}
-                  </div>
-                  <div className="flex items-center">
-                    <span className="font-semibold">Status:</span>{' '}
-                    {task.is_running && (
-                      <span className="inline-block h-4 w-4 mr-1 rounded-full border-2 border-t-transparent border-blue-600 animate-spin ml-2"></span>
-                    )}
-                    <span className={task.is_running ? "text-green-600 ml-1" : "text-red-600 ml-1"}>
-                      {task.is_running ? 'Em Execução' : 'Parado'}
-                    </span>
-                  </div>
-                  <div className="flex gap-2 mt-4 pt-2 border-t">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={task.is_running}
-                      onClick={startTask}
-                    >
-                      <RefreshCw className="h-4 w-4 mr-1" />
-                      Processar
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      disabled={!task.is_running}
-                      onClick={() => stopTask(key)}
-                    >
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Parar
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Export Confirmation Dialog */}
       <Dialog open={confirmExportDialogOpen} onOpenChange={setConfirmExportDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -641,8 +779,28 @@ const RPADetailPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={confirmDeleteDialogOpen} onOpenChange={setConfirmDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar exclusão</DialogTitle>
+            <DialogDescription>
+              Tem certeza de que deseja excluir este registro? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDeleteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              <Trash2 className="h-4 w-4 mr-1" />
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-};
+}
 
 export default RPADetailPage;

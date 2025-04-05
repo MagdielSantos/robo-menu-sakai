@@ -1,6 +1,5 @@
-
 import { toast } from "sonner";
-import { downloadExcel, formatRPAExecutionsForExcel } from "@/utils/excelUtils";
+import { exportExcel } from "@/utils/excelUtils";
 
 export class RPAFiltro {
   numero_de_processo?: string;
@@ -18,15 +17,8 @@ export class RPAFiltro {
   paginavel: boolean = true;
 }
 
-// This would be replaced with your actual API base URL from environment
-const API_URL = 'https://api.example.com/integracao_max';
-
-export interface RPATask {
-  is_running: boolean;
-  erro_login: boolean;
-  start_time: string;
-  end_time: string;
-}
+const API_URL = 'http://127.0.0.1:8000';
+const TOKEN = '5438404c-ecf7-4eb2-87b7-7f419954eea7';
 
 export interface ProjectInfo {
   nome_projeto: string;
@@ -59,14 +51,32 @@ export interface StatusCount {
   total: number;
 }
 
+export interface FilterItem {
+  field: string;
+  matchMode: string;
+  value: string;
+}
+
+export const DOCUMENT_TYPES = [
+  { label: "Cópia Integral", value: "Cópia Integral" },
+  { label: "Cópia de processo", value: "Cópia de processo" }
+];
+
+export const STATUS_TYPES = [
+  { label: "PENDENTE", value: "PENDENTE" },
+  { label: "INICIADO", value: "INICIADO" },
+  { label: "CONCLUÍDO", value: "CONCLUÍDO" },
+  { label: "ERRO", value: "ERRO" },
+  { label: "IGNORADO", value: "IGNORADO" }
+];
+
 class RPAService {
-  // Build query parameters for API requests
   private buildParams(filtro: RPAFiltro): URLSearchParams {
     const params = new URLSearchParams();
-    
+
     params.set('sort', filtro.sort);
     params.set('paginavel', filtro.paginavel.toString());
-    
+
     if (filtro.skip) params.set('skip', filtro.skip.toString());
     if (filtro.itensPorPagina) params.set('page_size', filtro.itensPorPagina.toString());
     if (filtro.numero_de_processo) params.set('numero_de_processo', filtro.numero_de_processo);
@@ -78,11 +88,10 @@ class RPAService {
     if (filtro.data_inicial) params.set('data_inicial', filtro.data_inicial);
     if (filtro.data_final) params.set('data_final', filtro.data_final);
     if (filtro.status_proc) params.set('status_proc', filtro.status_proc);
-    
+
     return params;
   }
 
-  // Process response and handle errors
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
       const errorData = await response.json();
@@ -92,15 +101,18 @@ class RPAService {
     return await response.json();
   }
 
-  // Fetch RPA data with filters
   async pesquisar(filtro: RPAFiltro, paginavel: boolean = true): Promise<{ datas: RPAExecution[]; total: number }> {
     try {
       filtro.paginavel = paginavel;
       const params = this.buildParams(filtro);
-      const response = await fetch(`${API_URL}/monitora_sharepoint/buscar/filtro?${params.toString()}`);
+      const response = await fetch(`${API_URL}/monitora_sharepoint/buscar/filtro?${params.toString()}`, {
+        mode: 'cors',
+        headers: {
+          'Authorization': `Bearer ${TOKEN}`
+        }
+      });
       const data = await this.handleResponse<any>(response);
-      
-      // Map backend data to our frontend data model
+
       const mappedData = data.data.map(item => ({
         id: item.id,
         status: item.status_proc,
@@ -114,7 +126,7 @@ class RPAService {
         startDate: item.data_inicio_exec,
         endDate: item.data_fim_exec
       }));
-      
+
       return {
         datas: mappedData,
         total: data.page_count
@@ -125,10 +137,14 @@ class RPAService {
     }
   }
 
-  // Get status counts
   async getStatusCount(): Promise<StatusCount> {
     try {
-      const response = await fetch(`${API_URL}/monitora_sharepoint/count_status`);
+      const response = await fetch(`${API_URL}/monitora_sharepoint/count_status`, {
+        mode: 'cors',
+        headers: {
+          'Authorization': `Bearer ${TOKEN}`
+        }
+      });
       return await this.handleResponse<StatusCount>(response);
     } catch (error: any) {
       toast.error(`Erro ao buscar contagem de status: ${error.message}`);
@@ -136,10 +152,14 @@ class RPAService {
     }
   }
 
-  // Get project info
   async getProjectInfo(projectId: string): Promise<ProjectInfo> {
     try {
-      const response = await fetch(`${API_URL}/projetos/${projectId}`);
+      const response = await fetch(`${API_URL}/projetos/${projectId}`, {
+        mode: 'cors',
+        headers: {
+          'Authorization': `Bearer ${TOKEN}`
+        }
+      });
       return await this.handleResponse<ProjectInfo>(response);
     } catch (error: any) {
       toast.error(`Erro ao buscar informações do projeto: ${error.message}`);
@@ -147,11 +167,14 @@ class RPAService {
     }
   }
 
-  // Delete a record
   async deletar(idRegistro: string): Promise<any> {
     try {
       const response = await fetch(`${API_URL}/monitora_sharepoint/deletar/${idRegistro}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        mode: 'cors',
+        headers: {
+          'Authorization': `Bearer ${TOKEN}`
+        }
       });
       const result = await this.handleResponse<any>(response);
       toast.success('Registro excluído com sucesso');
@@ -162,74 +185,128 @@ class RPAService {
     }
   }
 
-  // Start task processing
-  async processar(): Promise<any> {
+  async exportExcel(filtro: RPAFiltro): Promise<void> {
     try {
-      const response = await fetch(`${API_URL}/monitora_sharepoint/processar`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({})
-      });
-      const result = await this.handleResponse<any>(response);
-      toast.success('Processamento iniciado com sucesso');
-      return result;
-    } catch (error: any) {
-      toast.error(`Erro ao iniciar processamento: ${error.message}`);
-      throw error;
-    }
-  }
-
-  // Get tasks
-  async getTasks(): Promise<Record<string, RPATask>> {
-    try {
-      const response = await fetch(`${API_URL}/tarefas/obter/max_processar_sharepoint_`);
-      return await this.handleResponse<Record<string, RPATask>>(response);
-    } catch (error: any) {
-      toast.error(`Erro ao buscar tarefas: ${error.message}`);
-      throw error;
-    }
-  }
-
-  // Stop a task
-  async stopTask(taskName: string): Promise<any> {
-    try {
-      const response = await fetch(`${API_URL}/tarefas/parar`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ taskName })
-      });
-      const result = await this.handleResponse<any>(response);
-      toast.success(`Solicitação de parada para ${taskName} concluída`);
-      return result;
-    } catch (error: any) {
-      toast.error(`Erro ao parar tarefa: ${error.message}`);
-      throw error;
-    }
-  }
-
-  // Export data to Excel
-  async exportToExcel(filtro: RPAFiltro): Promise<void> {
-    try {
-      // We get all data without pagination to export
+      toast.success('Gerando a planilha Excel, aguarde!');
       filtro.paginavel = false;
       const { datas } = await this.pesquisar(filtro, false);
       
-      // Format data for Excel
-      const formattedData = formatRPAExecutionsForExcel(datas);
+      const modeloAtualizarProcesso = datas.map(dados => ({
+        "Status": dados.status || "---",
+        "Numero de processo": dados.processNumber || "---",
+        "Nome do documento": dados.documentName || "---",
+        "Tipo do documento": dados.documentType || "---",
+        "Caminho do documento": dados.documentPath || "---",
+        "Pasta Max": dados.maxFolder || "---",
+        "Tempo de Execução": dados.executionTime || "---",
+        "Data Cadastrado": formatDate(dados.registrationDate),
+        "Data Inicio Execução": formatDate(dados.startDate),
+        "Data Fim Execução": formatDate(dados.endDate)
+      }));
       
-      // Download Excel file
-      downloadExcel('Relatorio_RPA', formattedData);
-      
+      exportExcel('Relatorio', modeloAtualizarProcesso);
       toast.success('Exportação concluída com sucesso');
     } catch (error: any) {
       toast.error(`Erro ao exportar dados: ${error.message}`);
       throw error;
     }
   }
+
+  applyFilter(filtro: RPAFiltro, field: string, filter: { matchMode: string; value: string } | null): RPAFiltro {
+    const newFiltro = { ...filtro };
+    
+    // Remove the filter if null is passed
+    if (!filter || filter.value.trim() === '') {
+      switch (field) {
+        case 'processNumber':
+          newFiltro.numero_de_processo = undefined;
+          break;
+        case 'documentName':
+          newFiltro.nome_do_documento = undefined;
+          break;
+        case 'documentType':
+          newFiltro.tipo_do_documento = undefined;
+          break;
+        case 'documentPath':
+          newFiltro.caminho_do_documento = undefined;
+          break;
+        case 'maxFolder':
+          newFiltro.pasta_max = undefined;
+          break;
+        case 'status':
+          newFiltro.status_proc = undefined;
+          break;
+      }
+      return newFiltro;
+    }
+    
+    // Apply the filter with matchMode and value
+    const { matchMode, value } = filter;
+    
+    switch (field) {
+      case 'processNumber':
+        newFiltro.numero_de_processo = `${matchMode},${value}`;
+        break;
+      case 'documentName':
+        newFiltro.nome_do_documento = `${matchMode},${value}`;
+        break;
+      case 'documentType':
+        newFiltro.tipo_do_documento = value;
+        break;
+      case 'documentPath':
+        newFiltro.caminho_do_documento = `${matchMode},${value}`;
+        break;
+      case 'maxFolder':
+        newFiltro.pasta_max = `${matchMode},${value}`;
+        break;
+      case 'status':
+        newFiltro.status_proc = value;
+        break;
+    }
+    
+    return newFiltro;
+  }
+  
+  updateSort(filtro: RPAFiltro, field: string): RPAFiltro {
+    const newFiltro = { ...filtro };
+    
+    // Map the frontend field names to backend field names
+    const fieldMap = {
+      'processNumber': 'numero_de_processo',
+      'documentName': 'nome_do_documento',
+      'documentType': 'tipo_do_documento',
+      'documentPath': 'caminho_do_documento',
+      'maxFolder': 'pasta_max',
+      'status': 'status_proc',
+      'registrationDate': '-data_cadastrado',
+      'startDate': 'data_inicio_exec',
+      'endDate': 'data_fim_exec'
+    };
+    
+    const backendField = fieldMap[field as keyof typeof fieldMap] || field;
+    
+    // Toggle sort direction
+    if (newFiltro.sort === backendField) {
+      newFiltro.sort = `-${backendField}`;
+    } else if (newFiltro.sort === `-${backendField}`) {
+      newFiltro.sort = backendField;
+    } else {
+      newFiltro.sort = backendField;
+    }
+    
+    return newFiltro;
+  }
+}
+
+// Helper function to format dates
+function formatDate(dateString: string | null): string {
+  if (!dateString) return "---";
+  const date = new Date(dateString);
+  return date.toLocaleDateString('pt-BR') + " " + date.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
 }
 
 export const rpaService = new RPAService();

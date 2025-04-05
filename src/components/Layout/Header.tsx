@@ -45,7 +45,7 @@ const Header: React.FC<HeaderProps> = ({ pageTitle }) => {
             <div className="max-h-[300px] overflow-y-auto">
               <DropdownMenuItem className="p-3 focus:bg-accent">
                 <div className="flex flex-col gap-1">
-                  <div className="font-medium">RPA "Processamento de Faturas" completado</div>
+                  <div className="font-medium">RPA "Monitora Sharepoint Max" completado</div>
                   <div className="text-sm text-muted-foreground">Há 5 minutos</div>
                 </div>
               </DropdownMenuItem>

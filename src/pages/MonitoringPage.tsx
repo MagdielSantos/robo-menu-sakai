@@ -30,7 +30,7 @@ const mockPerformanceData = [
 ];
 
 const mockRPAStatus = [
-  { id: '1', name: 'Processamento de Faturas', status: 'active', lastCheck: '4 min atrás', trend: 'stable' },
+  { id: '1', name: 'Monitora Sharepoint Max', status: 'active', lastCheck: '4 min atrás', trend: 'stable' },
   { id: '2', name: 'Web Scraping de Preços', status: 'error', lastCheck: '2 min atrás', trend: 'down' },
   { id: '3', name: 'Integração de Cadastros', status: 'inactive', lastCheck: '10 min atrás', trend: 'stable' },
   { id: '4', name: 'Geração de Relatórios', status: 'processing', lastCheck: 'Agora', trend: 'up' },

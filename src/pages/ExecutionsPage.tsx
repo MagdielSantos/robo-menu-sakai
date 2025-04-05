@@ -22,7 +22,7 @@ import {
 const mockExecutions = [
   {
     id: '1',
-    rpaName: 'Processamento de Faturas',
+    rpaName: 'Monitora Sharepoint Max',
     startTime: '04/04/2025 14:30',
     endTime: '04/04/2025 14:35',
     status: 'success',
@@ -70,7 +70,7 @@ const mockExecutions = [
 const mockSchedules = [
   {
     id: '1',
-    rpaName: 'Processamento de Faturas',
+    rpaName: 'Monitora Sharepoint Max',
     schedule: 'Diário - 14:00',
     nextExecution: '05/04/2025 14:00',
     status: 'active',
