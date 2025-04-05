@@ -17,8 +17,25 @@ export class RPAFiltro {
   paginavel: boolean = true;
 }
 
+<<<<<<< HEAD
 const API_URL = 'http://127.0.0.1:8000';
 const TOKEN = '5438404c-ecf7-4eb2-87b7-7f419954eea7';
+=======
+<<<<<<< HEAD
+const API_URL = 'http://127.0.0.1:8000';
+const TOKEN = '5438404c-ecf7-4eb2-87b7-7f419954eea7';
+=======
+// Utiliza a URL da API real
+const API_URL = 'https://api.sistemajur.com.br';
+
+export interface RPATask {
+  is_running: boolean;
+  erro_login: boolean;
+  start_time: string;
+  end_time: string;
+}
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
+>>>>>>> 5dca80545b3c13cd3a03647238fbbda6b14bd5eb
 
 export interface ProjectInfo {
   nome_projeto: string;
@@ -106,6 +123,10 @@ class RPAService {
     try {
       filtro.paginavel = paginavel;
       const params = this.buildParams(filtro);
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 5dca80545b3c13cd3a03647238fbbda6b14bd5eb
       const response = await fetch(`${API_URL}/monitora_sharepoint/buscar/filtro?${params.toString()}`, {
         mode: 'cors',
         headers: {
@@ -128,6 +149,15 @@ class RPAService {
         endDate: item.data_fim_exec
       }));
 
+<<<<<<< HEAD
+=======
+=======
+      
+      // Usar a API real
+      const response = await fetch(`${API_URL}/monitora_sharepoint/buscar/filtro?${params.toString()}`);
+      const data = await this.handleResponse<any>(response);
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
+>>>>>>> 5dca80545b3c13cd3a03647238fbbda6b14bd5eb
       return {
         datas: mappedData,
         total: data.page_count
@@ -188,7 +218,68 @@ class RPAService {
 
   async exportExcel(filtro: RPAFiltro): Promise<void> {
     try {
+<<<<<<< HEAD
       toast.success('Gerando a planilha Excel, aguarde!');
+=======
+<<<<<<< HEAD
+      toast.success('Gerando a planilha Excel, aguarde!');
+=======
+      const response = await fetch(`${API_URL}/monitora_sharepoint/processar`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+      });
+      const result = await this.handleResponse<any>(response);
+      toast.success('Processamento iniciado com sucesso');
+      return result;
+    } catch (error: any) {
+      console.error('Error in processar:', error);
+      toast.error(`Erro ao iniciar processamento: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // Get tasks
+  async getTasks(): Promise<Record<string, RPATask>> {
+    try {
+      const response = await fetch(`${API_URL}/tarefas/obter/max_processar_sharepoint_`);
+      return await this.handleResponse<Record<string, RPATask>>(response);
+    } catch (error: any) {
+      console.error('Error in getTasks:', error);
+      toast.error(`Erro ao buscar tarefas: ${error.message}`);
+      // Em caso de falha, retorna objeto vazio
+      return {};
+    }
+  }
+
+  // Stop a task
+  async stopTask(taskName: string): Promise<any> {
+    try {
+      const response = await fetch(`${API_URL}/tarefas/parar`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ taskName })
+      });
+      const result = await this.handleResponse<any>(response);
+      toast.success(`Solicitação de parada para ${taskName} concluída`);
+      return result;
+    } catch (error: any) {
+      console.error('Error in stopTask:', error);
+      toast.error(`Erro ao parar tarefa: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // Export data to Excel
+  async exportToExcel(filtro: RPAFiltro): Promise<void> {
+    try {
+      // We get all data without pagination to export
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
+>>>>>>> 5dca80545b3c13cd3a03647238fbbda6b14bd5eb
       filtro.paginavel = false;
       const { datas } = await this.pesquisar(filtro, false);
       

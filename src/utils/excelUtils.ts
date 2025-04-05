@@ -8,6 +8,10 @@ interface ExcelColumn {
   width?: number;
 }
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 5dca80545b3c13cd3a03647238fbbda6b14bd5eb
 export function formatRPAExecutionsForExcel(executions: RPAExecution[]): Record<string, unknown>[] {
   return executions.map(execution => {
     return {
@@ -24,6 +28,35 @@ export function formatRPAExecutionsForExcel(executions: RPAExecution[]): Record<
     };
   });
 }
+<<<<<<< HEAD
+=======
+=======
+import { RPAExecution } from "@/services/RPAService";
+
+// Function to convert an array of objects to CSV format
+const convertToCSV = (objArray: any[]): string => {
+  if (objArray.length === 0) return '';
+  
+  const headers = Object.keys(objArray[0]);
+  const csvRows = [];
+  
+  // Add headers
+  csvRows.push(headers.join(','));
+  
+  // Add rows
+  for (const item of objArray) {
+    const values = headers.map(header => {
+      const val = item[header] || '';
+      // Escape quotes and wrap with quotes if the value contains commas or quotes
+      return `"${String(val).replace(/"/g, '""')}"`;
+    });
+    csvRows.push(values.join(','));
+  }
+  
+  return csvRows.join('\n');
+};
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
+>>>>>>> 5dca80545b3c13cd3a03647238fbbda6b14bd5eb
 
 export function downloadExcel(fileName: string, data: Record<string, unknown>[]): void {
   const worksheet = convertToWorksheet(data);
@@ -74,6 +107,10 @@ export function exportExcel(fileName: string, data: Record<string, unknown>[]): 
   XLSX.writeFile(createStyledWorkbook(fileName, formattedData), `${fileName}_${new Date().getTime()}.xlsx`);
 }
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 5dca80545b3c13cd3a03647238fbbda6b14bd5eb
 function createStyledWorkbook(sheetName: string, data: Record<string, unknown>[]): XLSX.WorkBook {
   // Create worksheet from JSON data
   const worksheet = XLSX.utils.json_to_sheet(data);
@@ -82,6 +119,24 @@ function createStyledWorkbook(sheetName: string, data: Record<string, unknown>[]
   const headers = Object.keys(data[0] || {});
   worksheet['!cols'] = headers.map(header => ({
     wch: Math.max(header.length + 5, 15)
+<<<<<<< HEAD
+=======
+=======
+// Format RPA executions for Excel export
+export const formatRPAExecutionsForExcel = (executions: RPAExecution[]): any[] => {
+  return executions.map(exec => ({
+    "Status": exec.status_proc || "---",
+    "Número de processo": exec.numero_de_processo || "---",
+    "Nome do documento": exec.nome_do_documento ? exec.nome_do_documento.split('_').join(' ') : "---",
+    "Tipo do documento": exec.tipo_do_documento || "---",
+    "Caminho do documento": exec.caminho_do_documento || "---",
+    "Pasta Max": exec.pasta_max || "---",
+    "Tempo de Execução": exec.tempo_de_execucao || "---",
+    "Data Cadastrado": formatDateForExcel(exec.data_cadastrado),
+    "Data Início Execução": formatDateForExcel(exec.data_inicio_exec),
+    "Data Fim Execução": formatDateForExcel(exec.data_fim_exec)
+>>>>>>> 865be18d247a6058042e7b561248557ca64e4d51
+>>>>>>> 5dca80545b3c13cd3a03647238fbbda6b14bd5eb
   }));
   
   // Apply header styling
